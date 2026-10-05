@@ -167,7 +167,7 @@ expected on a server: use a **read-only** access token (never your password) and
 private (`stat -c %a ~/.docker/config.json` → `600`). Your policy may require a credential helper
 instead.
 The script installs `curl` and `ca-certificates` (as Docker's own instructions do), then Docker
-Engine and Compose v2 from Docker's own repository — Ubuntu's packages only if Docker has none yet for
+Engine and the Compose plugin from Docker's own repository — Ubuntu's packages only if Docker has none yet for
 your release; the last line says which (`from: docker packages`). It turns on log rotation for every
 container and adds your user to the `docker` group. If Ubuntu's `docker.io` is already installed and
 no containers exist yet, it is replaced by Docker's packages. Your administrator may prefer to install Docker under your own standards —

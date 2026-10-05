@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 01-install-docker.sh — Docker Engine + Compose v2 from Docker's own apt repository
+# 01-install-docker.sh — Docker Engine + Compose plugin from Docker's own apt repository
 # (falls back to Ubuntu's packages if Docker has no repository for this release yet).
 # Also: log rotation for all containers, and your user in the docker group.
 # Run once, on the server:   sudo bash ~/docker/scripts/01-install-docker.sh   then log out and in.
