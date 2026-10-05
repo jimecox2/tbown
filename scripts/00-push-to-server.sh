@@ -23,4 +23,4 @@ ssh "$SERVER" 'chmod 755 ~/docker/scripts/*.sh ~/docker/tbrunoffline/deploy.sh ~
 
 echo
 echo "Done: package is in ~/docker on $SERVER ($(git -C "$PKG" describe --tags --always 2>/dev/null || echo 'no git'))."
-echo "Next (installation guide section 6):  ssh -t $SERVER 'sudo bash ~/docker/scripts/01-install-docker.sh'"
+echo "Next: ssh $SERVER, and continue with the installation guide (first install: section 6)."
