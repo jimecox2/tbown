@@ -18,9 +18,11 @@ servers, using the container option or the own-the-code option.
 
 ## How you get it onto your server
 
-```bash
-git clone https://github.com/jimecox2/tbown.git ~/tbown        # or download a release zip
-```
+Your organisation configures and maintains the server under its own policies; the guide lists what
+the stack needs and the recommended way to provide it.
+
+Download the release archive on your admin workstation, check its checksum, copy it to the server
+with `scp` and unpack it there (installation guide, section 4.7). No Git is needed on the server.
 
 Everything you need to know is in the installation guide. Secrets (passwords, tokens, keys) are
 generated on your server and never stored in this repository.

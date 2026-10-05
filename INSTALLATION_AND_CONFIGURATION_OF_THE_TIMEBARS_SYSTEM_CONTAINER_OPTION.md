@@ -109,15 +109,112 @@ ssh myserver 'echo key login ok'
 
 ## 4. Prepare the server
 
-Copy this package to the server and run the host setup (updates, automatic security updates, time
-zone, swap, firewall allowing SSH from your admin network only):
+**Your server, your policies.** You configure and maintain the server under your organisation's own
+standards — hardening baseline, patching, firewall, monitoring, endpoint protection, access control.
+This section lists **what the Timebars stack needs from the server** and **recommended ways** to
+provide it on a standard Ubuntu LTS installation. Where your policy already covers an item, keep your
+policy and check the outcome in the last column. Nothing here requires Git on the server.
+
+| # | The stack needs | Recommended (Ubuntu) | Check |
+|---|---|---|---|
+| 4.1 | A patched operating system | security updates applied automatically; full updates monthly | `apt list --upgradable` is short |
+| 4.2 | Correct time | NTP synchronisation, your time zone | `timedatectl` shows *synchronized: yes* |
+| 4.3 | Memory headroom on a 4 GB server | a 4 GB swap file (or your standard) | `swapon --show` |
+| 4.4 | No application port reachable from the network | host firewall: SSH from your admin network only | `sudo ufw status` |
+| 4.5 | Key-only administrator access | section 3 (SSH keys, no passwords, no root login) | `ssh -o PubkeyAuthentication=no myserver` is refused |
+| 4.6 | A few standard tools | `curl`, `ca-certificates`, `tar`, `openssl`, `python3` | `command -v curl tar openssl python3` |
+| 4.7 | This package on the server | copied from your workstation (4.7 below) | `ls ~/tbown` |
+
+Run the commands below in your SSH session (section 3). Each step stands alone; skip or replace any
+step your own standards already cover.
+
+### 4.1 Updates
 
 ```bash
-ssh myserver
-git clone https://github.com/jimecox2/tbown.git ~/tbown        # or unzip a release here
+sudo apt update && sudo apt full-upgrade -y
+sudo apt install -y unattended-upgrades
+sudo dpkg-reconfigure -f noninteractive unattended-upgrades     # security updates, automatically
+[ -f /var/run/reboot-required ] && sudo reboot                  # only if a new kernel was installed
+```
+If you manage patching centrally (Landscape, Ansible, WSUS-style tooling), use that instead.
+
+### 4.2 Time
+
+```bash
+sudo timedatectl set-timezone America/New_York     # your zone: timedatectl list-timezones
+timedatectl                                         # "System clock synchronized: yes"
+```
+Logs, backups and scheduled jobs use this time. Point NTP at your internal time servers if your
+policy requires it.
+
+### 4.3 Swap
+
+A 4 GB server runs the whole stack, but needs swap to absorb peaks. Skip this if the server has
+8 GB or more, or already has swap.
+
+```bash
+swapon --show                                       # nothing listed = no swap yet
+sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
+### 4.4 Firewall
+
+The containers publish their ports on the server itself only (`127.0.0.1`), so the firewall only
+needs to allow SSH from your admin network. Users reach the apps through the tunnel (an outbound
+connection) or your reverse proxy (section 11).
+
+```bash
+sudo apt install -y ufw
+sudo ufw allow from 192.168.1.0/24 to any port 22 proto tcp     # your admin network
+sudo ufw enable
+sudo ufw status verbose
+```
+Only if you run your own reverse proxy on this server (section 11.2): `sudo ufw allow 80,443/tcp`.
+
+> **Keep the `127.0.0.1` bindings in the compose files.** Docker writes its own firewall rules, and a
+> port published on all addresses (`"1337:1337"` instead of `"127.0.0.1:1337:1337"`) is reachable from
+> the network **even when ufw denies it**. If you use a network firewall in front of the server, it
+> needs no inbound rule except SSH (and 80/443 for your own proxy).
+
+### 4.5 Administrator access
+
+Done in section 3: key-only SSH, no password logins, no root login. Add your organisation's
+requirements here (named accounts, MFA, session recording, sudo policy).
+
+### 4.6 Tools
+
+Present on a standard Ubuntu installation; install any that are missing:
+```bash
+sudo apt install -y curl ca-certificates tar openssl python3
+```
+
+### 4.7 Copy this package to the server
+
+On your **workstation**, download the release archive (`tbown-<version>.tar.gz`, from the release
+page or as supplied by Timebars Ltd.) and check it against the published checksum, then copy it:
+
+```bash
+sha256sum tbown-<version>.tar.gz                    # compare with the release notes
+scp tbown-<version>.tar.gz myserver:~
+```
+
+On the **server**:
+```bash
+mkdir -p ~/tbown && tar xzf ~/tbown-<version>.tar.gz -C ~/tbown --strip-components=1
+ls ~/tbown                                          # docker  scripts  seed  INSTALLATION_...md  VERSION.md
+```
+`~/tbown` is the unpacked package (reference copy). Section 6 copies the stack folders from it to
+`~/docker`, where they run.
+
+### 4.8 Optional: one script for the recommendations
+
+`~/tbown/scripts/01-setup-host.sh` applies 4.1 to 4.4 and 4.6 in one go on a **fresh** server with no
+local standards of its own. Read it first; do not use it where your own baseline already applies.
+```bash
 TZ_NAME=America/New_York SSH_FROM=192.168.1.0/24 sudo -E bash ~/tbown/scripts/01-setup-host.sh
 ```
-Reboot if it says a new kernel was installed.
 
 ## 5. Install Docker
 
