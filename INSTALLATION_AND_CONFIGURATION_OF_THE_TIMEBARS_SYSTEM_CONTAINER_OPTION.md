@@ -266,7 +266,9 @@ offline mode).
    `~/docker/cloudflared/.env` (`TUNNEL_TOKEN=...`).
 2. Start it: `cd ~/docker/cloudflared && docker compose up -d && docker logs cloudflared` — the
    tunnel shows *Healthy* in the dashboard.
-3. Add one *published application* per hostname, pointing at the container by name:
+3. Add one *published application* per hostname, service type **HTTP**, pointing at the container
+   by name — not `localhost` (inside cloudflared that is cloudflared itself) and not the server's IP
+   (the ports are bound to `127.0.0.1`):
 
 | Hostname (example) | Service |
 |---|---|
@@ -335,6 +337,8 @@ your document management system (see the *Data Synchronization, Backup, Recovery
 | App address shows the wrong product or none | add the hostname to `runtime-config.json`, then reload twice |
 | Login fails from a new address | the address is missing from Strapi's allowed origins (CORS) |
 | No service worker | not HTTPS, the address lacks `"offline": true`, or `runtime-config.json` is not served |
+| `docker logs cloudflared`: *lookup tbwwwp on 127.0.0.11:53: server misbehaving* (browser: Cloudflare 502) | that container is not running, or not on `postgres_tbpg_net` — start its stack; the tunnel route needs no change |
+| Published application with `localhost:8687` does not work | inside the cloudflared container `localhost` is cloudflared itself — use the container name (`tbrun-offline:80`, `tbbe:1337`, `tbwwwp:3001`) |
 
 For help, send the output of `bash ~/docker/scripts/06-health-check.sh` and
 `docker logs --tail 100 <container>` — never send `.env` files, tokens or passwords.
