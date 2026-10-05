@@ -223,6 +223,14 @@ Create the first administrator at `https://<your backend address>/admin` once th
 works (section 12), or now through an SSH tunnel from your workstation:
 `ssh -N -L 1337:localhost:1337 myserver`, then open `http://localhost:1337/admin`.
 
+Expected messages in the log on a first start:
+
+| Message | Meaning |
+|---|---|
+| `API key does not start with "SG."` | `SENDGRID_API_KEY` is empty — Strapi runs, but sends no email |
+| `Users-permissions registration has defaulted to accepting ... additional user fields` | informational; the sign-up fields are being made explicit in a later image |
+| administration panel at `http://0.0.0.0:1337/admin` | the address Strapi listens on inside the container; use your public address or the SSH tunnel |
+
 *(draft)* Allowed origins (CORS): the current backend image accepts the Timebars Ltd. domains and
 `*.rlan.ca`; reading the list from `.env` is being added.
 
