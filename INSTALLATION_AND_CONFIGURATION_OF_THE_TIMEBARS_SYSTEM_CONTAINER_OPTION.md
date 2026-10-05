@@ -206,6 +206,11 @@ docker network ls | grep tbpg          # postgres_tbpg_net
 ```
 On first start an empty database is created for Strapi, with its own login (not the superuser).
 
+The log line `initdb: warning: enabling "trust" authentication for local connections` is the official
+PostgreSQL image's default: it applies only to connections *inside* the container (used by the
+backup and restore scripts through `docker exec`). Connections from other containers, such as
+Strapi, need the password, and the port is reachable only from the server itself (`127.0.0.1:5433`).
+
 ## 9. Strapi backend
 
 ```bash
