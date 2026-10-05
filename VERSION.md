@@ -11,4 +11,4 @@ Release: **unreleased (draft)** — tested images will be pinned here when `v1.0
 | Database admin (optional) | `dpage/pgadmin4` | `latest` | profile `tools` |
 | Tunnel (optional) | `cloudflare/cloudflared` | `latest` | |
 
-Tested on: Ubuntu 26.04 LTS, Docker from Docker's apt repository, Compose v2.
+Tested on: Ubuntu 26.04 LTS, Docker Engine 29.8 from Docker's apt repository, Compose plugin (`docker compose`).

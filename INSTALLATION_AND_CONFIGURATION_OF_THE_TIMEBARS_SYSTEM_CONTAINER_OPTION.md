@@ -158,15 +158,20 @@ exit                                            # log out and back in, so docker
 ```
 ```bash
 ssh myserver
-docker version && docker compose version
+id -nG                                          # must list "docker" - if not, log out and in again
+docker version && docker compose version        # Client and Server versions both shown
 docker login -u <your Docker Hub user>          # paste your read-only access token
 ```
+`docker login` warns that the credentials are stored unencrypted in `~/.docker/config.json`. That is
+expected on a server: use a **read-only** access token (never your password) and keep the file
+private (`stat -c %a ~/.docker/config.json` → `600`). Your policy may require a credential helper
+instead.
 The script installs `curl` and `ca-certificates` (as Docker's own instructions do), then Docker
 Engine and Compose v2 from Docker's own repository — Ubuntu's packages only if Docker has none yet for
 your release; the last line says which (`from: docker packages`). It turns on log rotation for every
 container and adds your user to the `docker` group. If Ubuntu's `docker.io` is already installed and
 no containers exist yet, it is replaced by Docker's packages. Your administrator may prefer to install Docker under your own standards —
-the stack needs Docker Engine 24+ and Compose v2 (`docker compose`).
+the stack needs Docker Engine 24+ with the Compose plugin (`docker compose`).
 
 ## 7. Volumes and secrets
 
