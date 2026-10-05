@@ -1,0 +1,16 @@
+# Website, sign-up and the Personal / Enterprise dashboards (Next.js).
+# Port 3001 is bound to this server only; the public address goes through the tunnel or proxy.
+services:
+  tbwwwp:
+    image: jimecox807/tbwwwp:${TBWWW_TAG:-latest}
+    container_name: tbwwwp
+    restart: always
+    env_file: .env
+    ports:
+      - "127.0.0.1:3001:3001"
+    networks:
+      - postgres_tbpg_net
+
+networks:
+  postgres_tbpg_net:
+    external: true

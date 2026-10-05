@@ -1,0 +1,17 @@
+# Cloudflare Tunnel: an OUTBOUND connection from this server to Cloudflare - no inbound ports.
+# Joins postgres_tbpg_net so each published hostname points at a container by name
+# (see the table in the installation guide). The token lives in .env, never in this file.
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:${CLOUDFLARED_TAG:-latest}
+    container_name: cloudflared
+    restart: always
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN:?set TUNNEL_TOKEN in .env}
+    networks:
+      - postgres_tbpg_net
+
+networks:
+  postgres_tbpg_net:
+    external: true

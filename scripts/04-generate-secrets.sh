@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# 04-generate-secrets.sh — create each stack's .env from its .env.example and fill every
+# CHANGE_ME with a new random value. Never overwrites an existing .env.
+# The Strapi database password is the same in postgres/.env and tbbe/.env (generated once).
+# Run from the folder that holds the stacks:   bash scripts/04-generate-secrets.sh ~/docker
+set -euo pipefail
+ROOT="${1:-$HOME/docker}"
+rnd() { openssl rand -base64 33 | tr -d '/+=\n' | cut -c1-40; }
+DB_PW=$(rnd)
+
+fill() {   # $1 = stack folder
+  local d="$ROOT/$1"
+  [ -f "$d/.env.example" ] || return 0
+  if [ -f "$d/.env" ]; then echo "kept:    $d/.env (already exists)"; return 0; fi
+  cp "$d/.env.example" "$d/.env"; chmod 600 "$d/.env"
+  sed -i "s|^STRAPI_DB_PASSWORD=CHANGE_ME|STRAPI_DB_PASSWORD=$DB_PW|; s|^DATABASE_PASSWORD=CHANGE_ME|DATABASE_PASSWORD=$DB_PW|" "$d/.env"
+  sed -i "s|^APP_KEYS=CHANGE_ME|APP_KEYS=$(rnd),$(rnd),$(rnd),$(rnd)|" "$d/.env"
+  while grep -q '=CHANGE_ME$' "$d/.env"; do
+    sed -i "0,/=CHANGE_ME\$/s|=CHANGE_ME\$|=$(rnd)|" "$d/.env"
+  done
+  echo "created: $d/.env"
+}
+for s in postgres tbbe tbwwwp cloudflared; do fill "$s"; done
+echo
+echo "Now edit the values that are yours (addresses, email key, tunnel token):"
+echo "  $ROOT/tbbe/.env          BE_URL, FE_URL, SENDGRID_API_KEY"
+echo "  $ROOT/tbwwwp/.env        your addresses"
+echo "  $ROOT/cloudflared/.env   TUNNEL_TOKEN (paste it; cloudflared will not start without it)"

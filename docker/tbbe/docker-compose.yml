@@ -1,0 +1,19 @@
+# Strapi backend (login, licences, publishing, registration email). Joins postgres_tbpg_net and
+# reaches the database by name (DATABASE_HOST=tbpgdb). Port 1337 is bound to this server only;
+# the public address (e.g. be2.example.com) goes through the tunnel or your reverse proxy.
+services:
+  tbbe:
+    image: jimecox807/tbbe:${TBBE_TAG:-latest}
+    container_name: tbbe
+    restart: always
+    env_file: .env
+    ports:
+      - "127.0.0.1:1337:1337"
+    volumes:
+      - ./public/uploads:/opt/app/public/uploads    # uploaded files; owned by uid 1000 (node)
+    networks:
+      - postgres_tbpg_net
+
+networks:
+  postgres_tbpg_net:
+    external: true          # created by the postgres stack

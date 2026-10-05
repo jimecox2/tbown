@@ -1,0 +1,18 @@
+# The Agilebars / Timebars / Costbars app (offline-capable image). One image for every customer:
+# your addresses come from runtime-config.json (copy runtime-config.example.json and edit it).
+# Port 8687 is bound to this server only; the public addresses go through the tunnel or proxy.
+services:
+  tbrun-offline:
+    image: jimecox807/tbrun:${OFFLINE_TAG:?run ./deploy.sh first, it sets OFFLINE_TAG in .env}
+    container_name: tbrun-offline
+    restart: always
+    ports:
+      - "127.0.0.1:8687:80"
+    volumes:
+      - ./runtime-config.json:/usr/share/nginx/html/runtime-config.json:ro
+    networks:
+      - postgres_tbpg_net
+
+networks:
+  postgres_tbpg_net:
+    external: true
