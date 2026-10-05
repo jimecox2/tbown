@@ -3,8 +3,8 @@
 For organisations that run the Timebars suite (Agilebars, Timebars, Costbars) on their own
 servers, using the container option or the own-the-code option.
 
-> **Status:** first release in preparation (October 2026). The installation is being rehearsed on a
-> test server; until release `v1.0.0` is tagged, treat everything here as a draft.
+> **Status:** installation rehearsed end to end on a test server (October 2026). Release `v1.0.0`
+> follows the updated website and backend images — see `VERSION.md`.
 
 ## What is in here
 

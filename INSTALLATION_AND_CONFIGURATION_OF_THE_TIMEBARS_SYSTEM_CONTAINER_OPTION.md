@@ -1,7 +1,9 @@
 # Installation and Configuration of the Timebars System — Container Option
 
-> **Draft.** This guide is being rehearsed step by step on a test server (Ubuntu 26.04, October
-> 2026). Steps marked *(draft)* may still change.
+> **Rehearsed end to end** on a test server (Ubuntu 26.04, Docker 29.8, October 2026): app, backend,
+> database with the seed data, website and Cloudflare Tunnel. Items marked *(draft)* wait for updated
+> images — the website reading its addresses at run time, and the backend reading its allowed origins
+> and email sender from `.env`.
 
 ## Contents
 
@@ -234,14 +236,23 @@ Expected messages in the log on a first start:
 *(draft)* Allowed origins (CORS): the current backend image accepts the Timebars Ltd. domains and
 `*.rlan.ca`; reading the list from `.env` is being added.
 
+**Next, load the seed data (section 14) before starting the website**: the website builds its pages
+from Strapi's content (products, help articles, FAQ).
+
 ## 10. Website and dashboards
 
-*(draft — the website image is being reworked to read its addresses at run time and keep every
-secret on the server.)*
+Set your addresses and the image tag from `VERSION.md` in `~/docker/tbwwwp/.env`, for example:
 ```bash
+sed -i 's|^TBWWW_TAG=.*|TBWWW_TAG=<tag from VERSION.md>|; s|https://www.example.com|https://www.yourdomain|g; s|https://be2.example.com|https://be2.yourdomain|g' ~/docker/tbwwwp/.env
 cd ~/docker/tbwwwp && docker compose up -d
+sleep 20; docker logs --tail 10 tbwwwp                                 # "Ready"
 curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3001/      # 200
 ```
+Sign-in with email and password works against your backend. Google / GitHub / Facebook sign-in,
+payments and notifications stay off until you add their keys (*Administrators Guide*).
+
+*(draft)* The current website image has its public addresses fixed when it is built; the release
+image reads them from `.env` at run time.
 
 ## 11. The app
 
@@ -298,7 +309,15 @@ Application → Service Workers shows `sw.js` activated; tick *Offline* and pres
 ```bash
 bash ~/docker/scripts/04-restore.sh            # loads ~/docker/seed/seed.dump and seed-uploads.tar.gz
 ```
-The same script restores your own backups (section 15). It replaces the Strapi database.
+The same script restores your own backups (section 15). It replaces the Strapi database, and ends
+by listing the tables that hold rows.
+
+After the seed is loaded:
+- Strapi admin (`https://<backend>/admin`): sign in with the administrator account supplied by
+  Timebars Ltd. with this package, and change its password.
+- API tokens stored in the seed were made under Timebars Ltd.'s secrets and do not work on your
+  server — create new ones in Strapi (Settings → API Tokens) where you need them.
+- In the app, sign in with a demo account: *Show License* shows the product and its limits.
 
 ## 15. Backups
 
