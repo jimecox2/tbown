@@ -23,8 +23,17 @@ docker exec tbpgdb psql -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 \
   -c "CREATE DATABASE \"$STRAPI_DB_NAME\" OWNER \"$STRAPI_DB_USER\";"
 
 echo "== Restoring $DUMP"
+LOG="$ROOT/seed/restore-$(date +%Y%m%d-%H%M).log"
+set +e
 docker exec -i tbpgdb pg_restore -U "$POSTGRES_USER" -d "$STRAPI_DB_NAME" \
-  --no-owner --no-acl --role="$STRAPI_DB_USER" --exit-on-error < "$DUMP"
+  --no-owner --no-acl --role="$STRAPI_DB_USER" < "$DUMP" > "$LOG" 2>&1
+rc=$?
+set -e
+if [ "$rc" -ne 0 ]; then
+  echo "pg_restore reported $(grep -c 'error:' "$LOG") error(s) - details in $LOG:"
+  grep 'error:' "$LOG" | head -10
+  echo "(Warnings about roles, owners or comments from an older PostgreSQL are usually harmless.)"
+fi
 
 if [ -n "$UPLOADS" ]; then
   echo "== Restoring uploads from $UPLOADS"
