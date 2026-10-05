@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# 05-restore-seed.sh — load a Strapi database dump (and its uploads) into this server.
-# Used for the demo seed data and for restoring your own backups (scripts/06-backup.sh).
-#   bash scripts/05-restore-seed.sh <dump file> [uploads .tar.gz] [stack root]
+# 04-restore.sh — load a Strapi database dump (and its uploads) into this server.
+# Used for the demo seed data and for restoring your own backups (05-backup.sh).
+#   bash ~/docker/scripts/04-restore.sh <dump file> [uploads .tar.gz] [stack root]
 # Replaces everything in the Strapi database. Strapi is stopped during the restore.
 set -euo pipefail
-DUMP="${1:?usage: 05-restore-seed.sh <dump> [uploads.tar.gz] [stack root]}"
+DUMP="${1:?usage: 04-restore.sh <dump> [uploads.tar.gz] [stack root]}"
 UPLOADS="${2:-}"
 ROOT="${3:-$HOME/docker}"
 set -a; . "$ROOT/postgres/.env"; set +a

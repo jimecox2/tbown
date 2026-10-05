@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 07-health-check.sh — is everything up? Read-only. Run any time: bash scripts/07-health-check.sh
+# 06-health-check.sh — is everything up? Read-only. On the server, any time: bash ~/docker/scripts/06-health-check.sh
 ok()   { printf '  \033[32mOK\033[0m    %s\n' "$1"; }
 bad()  { printf '  \033[31mFAIL\033[0m  %s\n' "$1"; FAIL=1; }
 FAIL=0

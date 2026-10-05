@@ -11,21 +11,26 @@ servers, using the container option or the own-the-code option.
 | Path | What it is |
 |---|---|
 | [`INSTALLATION_AND_CONFIGURATION_OF_THE_TIMEBARS_SYSTEM_CONTAINER_OPTION.md`](INSTALLATION_AND_CONFIGURATION_OF_THE_TIMEBARS_SYSTEM_CONTAINER_OPTION.md) | **Start here** — the step-by-step installation guide |
-| `docker/` | one folder per stack (compose file, `.env.example`, config templates); copied to `~/docker` on the server |
-| `scripts/` | numbered helper scripts used by the guide (host setup, Docker, secrets, restore, backup, health check) |
+| `docker/` | one folder per stack (compose file, `.env.example`, config templates); sent to `~/docker` on the server |
+| `scripts/` | `00-push-to-server.sh` (runs on your workstation) and `01`–`06` (run on the server: Docker, volumes, secrets, restore, backup, health check) |
 | `seed/` | demo seed data for a first start (no real users) |
 | [`VERSION.md`](VERSION.md) | the image tags this release was tested with |
 
-## How you get it onto your server
+## How it is installed
 
-Your organisation configures and maintains the server under its own policies; the guide lists what
-the stack needs and the recommended way to provide it.
+Keep this package on your **admin workstation** (clone it, or unpack a release download) and run
+the installation from there:
 
-Download the release archive on your admin workstation, check its checksum, copy it to the server
-with `scp` and unpack it there (installation guide, section 4.7). No Git is needed on the server.
+```bash
+git clone https://github.com/jimecox2/tbown.git ~/tbown && cd ~/tbown
+bash scripts/00-push-to-server.sh myserver      # sends the stacks, scripts and seed to ~/docker on the server
+ssh myserver                                    # every further step runs on the server, as the guide says
+```
 
-Everything you need to know is in the installation guide. Secrets (passwords, tokens, keys) are
-generated on your server and never stored in this repository.
+Your organisation's administrator prepares and secures the server under your own policies; the
+guide states only the end state the stack needs (section 4). The scripts install Docker and the
+Timebars stack. Secrets (passwords, tokens, keys) are generated on the server and never stored in
+this repository or on your workstation.
 
 ## Not in here
 

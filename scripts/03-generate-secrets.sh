@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# 04-generate-secrets.sh — create each stack's .env from its .env.example and fill every
+# 03-generate-secrets.sh — create each stack's .env from its .env.example and fill every
 # CHANGE_ME with a new random value. Never overwrites an existing .env.
 # The Strapi database password is the same in postgres/.env and tbbe/.env (generated once).
-# Run from the folder that holds the stacks:   bash scripts/04-generate-secrets.sh ~/docker
+# Run on the server:   bash ~/docker/scripts/03-generate-secrets.sh
 set -euo pipefail
 ROOT="${1:-$HOME/docker}"
 rnd() { openssl rand -base64 33 | tr -d '/+=\n' | cut -c1-40; }

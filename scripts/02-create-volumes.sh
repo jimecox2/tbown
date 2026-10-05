@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 03-create-volumes.sh — the named volumes the postgres stack expects (external, so that
+# 02-create-volumes.sh — the named volumes the postgres stack expects (external, so that
 # "docker compose down" can never delete the database). Safe to run again.
 set -euo pipefail
 for v in postgres_db postgres_pgadmin; do

@@ -4,7 +4,7 @@ Demo data for a first start: a Strapi database dump with products and demo accou
 users or customers), plus the matching uploads. Restore it with:
 
 ```bash
-bash ~/tbown/scripts/05-restore-seed.sh ~/tbown/seed/seed.dump ~/tbown/seed/seed-uploads.tar.gz
+bash ~/docker/scripts/04-restore.sh ~/docker/seed/seed.dump ~/docker/seed/seed-uploads.tar.gz      # on the server
 ```
 
 Files (added before release `v1.0.0`):

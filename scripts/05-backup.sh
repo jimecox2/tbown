@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# 06-backup.sh — nightly backup: Strapi database (pg_dump), Strapi uploads, and the .env files.
+# 05-backup.sh — nightly backup: Strapi database (pg_dump), Strapi uploads, and the .env files.
 # Keeps KEEP_DAYS days. Copy the backup folder OFF this server too (your backup system).
-#   bash scripts/06-backup.sh [stack root] [backup folder]
+#   bash ~/docker/scripts/05-backup.sh [stack root] [backup folder]
 # Cron (crontab -e as your admin user), every night at 02:15:
-#   15 2 * * * /bin/bash $HOME/tbown/scripts/06-backup.sh >> $HOME/backups/timebars/backup.log 2>&1
+#   15 2 * * * /bin/bash $HOME/docker/scripts/05-backup.sh >> $HOME/backups/timebars/backup.log 2>&1
 set -euo pipefail
 ROOT="${1:-$HOME/docker}"
 DEST_ROOT="${2:-$HOME/backups/timebars}"
