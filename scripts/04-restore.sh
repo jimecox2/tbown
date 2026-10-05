@@ -7,6 +7,8 @@ set -euo pipefail
 DUMP="${1:?usage: 04-restore.sh <dump> [uploads.tar.gz] [stack root]}"
 UPLOADS="${2:-}"
 ROOT="${3:-$HOME/docker}"
+[ "$(id -u)" -ne 0 ] || { echo "Run this WITHOUT sudo, as your admin user."; exit 1; }
+docker info >/dev/null 2>&1 || { echo "Cannot use Docker as $USER. Log out and back in after 01-install-docker.sh (id -nG must list docker)."; exit 1; }
 set -a; . "$ROOT/postgres/.env"; set +a
 
 [ -f "$DUMP" ] || { echo "No such file: $DUMP"; exit 1; }

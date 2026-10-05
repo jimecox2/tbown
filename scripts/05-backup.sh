@@ -8,6 +8,8 @@ set -euo pipefail
 ROOT="${1:-$HOME/docker}"
 DEST_ROOT="${2:-$HOME/backups/timebars}"
 KEEP_DAYS="${KEEP_DAYS:-14}"
+[ "$(id -u)" -ne 0 ] || { echo "Run this WITHOUT sudo, as your admin user."; exit 1; }
+docker info >/dev/null 2>&1 || { echo "Cannot use Docker as $USER. Log out and back in after 01-install-docker.sh (id -nG must list docker)."; exit 1; }
 set -a; . "$ROOT/postgres/.env"; set +a
 
 STAMP=$(date +%Y-%m-%d_%H%M)

@@ -3,6 +3,7 @@
 ok()   { printf '  \033[32mOK\033[0m    %s\n' "$1"; }
 bad()  { printf '  \033[31mFAIL\033[0m  %s\n' "$1"; FAIL=1; }
 FAIL=0
+docker info >/dev/null 2>&1 || { echo "Cannot use Docker as $USER. Log out and back in after 01-install-docker.sh (id -nG must list docker)."; exit 1; }
 echo "Containers:"
 for c in tbpgdb tbbe tbwwwp tbrun-offline cloudflared; do
   s=$(docker inspect -f '{{.State.Status}}' "$c" 2>/dev/null || echo missing)

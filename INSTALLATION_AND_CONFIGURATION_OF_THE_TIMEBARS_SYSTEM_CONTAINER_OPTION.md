@@ -175,6 +175,9 @@ the stack needs Docker Engine 24+ with the Compose plugin (`docker compose`).
 
 ## 7. Volumes and secrets
 
+From here on, run every script **without `sudo`**, as your admin user — the files they create must
+belong to you, in `~/docker`. If a script says it cannot use Docker, log out and back in (section 6).
+
 ```bash
 bash ~/docker/scripts/02-create-volumes.sh
 bash ~/docker/scripts/03-generate-secrets.sh

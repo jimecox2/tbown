@@ -5,6 +5,8 @@
 # Run on the server:   bash ~/docker/scripts/03-generate-secrets.sh
 set -euo pipefail
 ROOT="${1:-$HOME/docker}"
+[ "$(id -u)" -ne 0 ] || { echo "Run this WITHOUT sudo, as your admin user."; exit 1; }
+[ -f "$ROOT/postgres/.env.example" ] || { echo "No stacks in $ROOT - run 00-push-to-server.sh from your workstation first."; exit 1; }
 rnd() { openssl rand -base64 33 | tr -d '/+=\n' | cut -c1-40; }
 DB_PW=$(rnd)
 
