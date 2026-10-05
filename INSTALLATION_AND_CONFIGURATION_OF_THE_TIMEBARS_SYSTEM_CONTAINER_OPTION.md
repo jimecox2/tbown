@@ -161,9 +161,11 @@ ssh myserver
 docker version && docker compose version
 docker login -u <your Docker Hub user>          # paste your read-only access token
 ```
-The script installs Docker Engine and Compose v2 from Docker's own repository (Ubuntu's packages if
-Docker has none yet for your release), turns on log rotation for every container, and adds your user
-to the `docker` group. Your administrator may prefer to install Docker under your own standards —
+The script installs `curl` and `ca-certificates` (as Docker's own instructions do), then Docker
+Engine and Compose v2 from Docker's own repository — Ubuntu's packages only if Docker has none yet for
+your release; the last line says which (`from: docker packages`). It turns on log rotation for every
+container and adds your user to the `docker` group. If Ubuntu's `docker.io` is already installed and
+no containers exist yet, it is replaced by Docker's packages. Your administrator may prefer to install Docker under your own standards —
 the stack needs Docker Engine 24+ and Compose v2 (`docker compose`).
 
 ## 7. Volumes and secrets
@@ -307,6 +309,7 @@ your document management system (see the *Data Synchronization, Backup, Recovery
 | `00-push-to-server.sh`: *rsync is missing* | install `rsync` on the workstation or ask the administrator to install it on the server (section 4.7) |
 | `apt`: *Temporary failure resolving* | the server has no DNS — your administrator sets gateway and DNS servers |
 | `permission denied ... docker.sock` | log out and back in after section 6 |
+| Docker install says *Cannot reach download.docker.com* | the server has no internet access to Docker (proxy, firewall); fix it and run the script again |
 | Strapi cannot reach the database | `DATABASE_*` in `tbbe/.env` must match `STRAPI_DB_*` in `postgres/.env` |
 | App address shows the wrong product or none | add the hostname to `runtime-config.json`, then reload twice |
 | Login fails from a new address | the address is missing from Strapi's allowed origins (CORS) |
