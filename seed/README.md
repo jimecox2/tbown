@@ -1,13 +1,13 @@
 # Seed data
 
-Demo data for a first start: a Strapi database dump with products and demo accounts (no real
-users or customers), plus the matching uploads. Restore it with:
+The Timebars Ltd. Strapi database (products, website content, demo and test accounts) and its
+uploads — the data the hosted service runs on. Restore it with:
 
 ```bash
-bash ~/docker/scripts/04-restore.sh ~/docker/seed/seed.dump ~/docker/seed/seed-uploads.tar.gz      # on the server
+bash ~/docker/scripts/04-restore.sh      # on the server; loads seed.dump and seed-uploads.tar.gz
 ```
 
-Files (added before release `v1.0.0`):
+Files:
 
 | File | What it is |
 |---|---|

@@ -296,7 +296,7 @@ Application → Service Workers shows `sw.js` activated; tick *Offline* and pres
 ## 14. Load the seed data or a backup
 
 ```bash
-bash ~/docker/scripts/04-restore.sh ~/docker/seed/seed.dump ~/docker/seed/seed-uploads.tar.gz
+bash ~/docker/scripts/04-restore.sh            # loads ~/docker/seed/seed.dump and seed-uploads.tar.gz
 ```
 The same script restores your own backups (section 15). It replaces the Strapi database.
 
