@@ -15,6 +15,7 @@ servers, using the container option or the own-the-code option.
 | `scripts/` | `00-push-to-server.sh` (runs on your workstation) and `01`–`06` (run on the server: Docker, volumes, secrets, restore, backup, health check) |
 | `seed/` | demo seed data for a first start (no real users) |
 | [`VERSION.md`](VERSION.md) | the image tags this release was tested with |
+| [`WELCOME_EMAIL_CONTAINER_OPTION.md`](WELCOME_EMAIL_CONTAINER_OPTION.md) | the getting-started email Timebars Ltd. sends with this package (template) |
 
 ## How it is installed
 
