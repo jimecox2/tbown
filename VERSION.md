@@ -8,7 +8,7 @@ Tested together on the rehearsal server:
 |---|---|---|---|
 | App (offline-capable) | `jimecox807/tbrun` | `offline-v2` | reads `runtime-config.json` — one image for every customer |
 | Strapi backend | `jimecox807/tbbe` | `latest` | Strapi 4.14.2 on Node 16; runs on PostgreSQL 16 |
-| AI service (helpapp) | `jimecox807/tbhelpapp` | *set when the image is pushed* | routes `/api/ai/*`; needs your Gemini key; checks the Timebars Cloud login |
+| AI service (helpapp) | `jimecox807/tbhelpapp` | `v1` | routes `/api/ai/*`; needs your Gemini key; checks the Timebars Cloud login |
 | Website / dashboards | `jimecox807/tbwwwp` | `rlan-test` (rehearsal only) | release image will read its addresses at run time |
 | Database | `postgres` | `16` | official image; the seed (made on PostgreSQL 14) restores into it |
 | Database admin (optional) | `dpage/pgadmin4` | `latest` | profile `tools` |

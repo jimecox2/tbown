@@ -276,7 +276,10 @@ nano ~/docker/tbhelpapp/.env.local      # GEMINI_API_KEY=<your key>;  STRAPI_URL
 ```bash
 cd ~/docker/tbhelpapp && ./deploy.sh
 ```
-It prints `OK: ... is serving /api/ai/*` when the container answers. A site with no Strapi (no login) sets
+It prints `OK: ... is serving /api/ai/*` when the container answers. The AI service needs **no public
+address**: no DNS record and no tunnel entry. The browser only calls the app's own address, and the app
+forwards `/ai/` to this container. `docker ps` may show `tbhelpapp` as *unhealthy* (its healthcheck tests
+the home page, which logs a harmless `sharp` image-optimiser message); AI keeps working. A site with no Strapi (no login) sets
 `AI_REQUIRE_LOGIN=false` in `.env.local` and keeps the server reachable from its own network only.
 
 ### 11.2 The app
@@ -288,6 +291,11 @@ cp runtime-config.example.json runtime-config.json
 nano runtime-config.json        # your backend, website and one row per app hostname
 ./deploy.sh                     # enter the tag from VERSION.md, e.g. v2
 ```
+Run this **after** `tbhelpapp` is up, and after `00-push-to-server.sh` has copied the current compose file:
+an app started from an older compose file does not join the `tbhelp` network and AI answers 502.
+Check with `docker network inspect tbhelp --format '{{range .Containers}}{{.Name}} {{end}}'`, which must
+list `tbhelpapp` and `tbrun-offline`. The browser console shows a 404 for `/runtime-config.json` only if the
+file is missing; with it present there is no 404.
 Each `sites` row maps a hostname to a product: `AB` Agilebars, `TB` Timebars, `CB` Costbars;
 `"offline": true` lets that address work offline. A hostname that is not listed gets no product.
 `aiBaseUrl` stays `/ai` (the app's own address, forwarded to `tbhelpapp`); change it only if you host the AI
@@ -383,6 +391,7 @@ your document management system (see the *Data Synchronization, Backup, Recovery
 | Docker install says *Cannot reach download.docker.com* | the server has no internet access to Docker (proxy, firewall); fix it and run the script again |
 | Strapi cannot reach the database | `DATABASE_*` in `tbbe/.env` must match `STRAPI_DB_*` in `postgres/.env` |
 | AI answers *502* | `tbhelpapp` is not running, or the app is not on network `tbhelp` — `docker network inspect tbhelp` lists both; start `tbhelpapp` first, then `docker compose up -d` in `tbrunoffline` |
+| AI answers *503* "Could not check your login right now" | `tbhelpapp` cannot reach Strapi — `STRAPI_URL` in `tbhelpapp/.env.local` is wrong (it should be `http://tbbe:1337/api`) or `tbbe` is down; test: `docker exec tbhelpapp wget -S -O- http://tbbe:1337/api/users/me` answers 401/403 when healthy |
 | AI answers *401* | the user is not signed in, the login expired, or `STRAPI_URL` in `tbhelpapp/.env.local` is wrong |
 | AI answers an error naming `GEMINI_API_KEY` | the key is missing in `tbhelpapp/.env.local`; add it and `docker compose up -d` |
 | App address shows the wrong product or none | add the hostname to `runtime-config.json`, then reload twice |
