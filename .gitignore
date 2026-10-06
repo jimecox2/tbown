@@ -1,5 +1,6 @@
 # Secrets and per-install files never go in this repository
 .env
+.env.local
 *.env
 !*.env.example
 docker/tbrunoffline/runtime-config.json

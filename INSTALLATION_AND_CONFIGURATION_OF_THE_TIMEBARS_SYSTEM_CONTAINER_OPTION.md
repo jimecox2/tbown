@@ -17,7 +17,7 @@
 8. [Database](#8-database)
 9. [Strapi backend](#9-strapi-backend)
 10. [Website and dashboards](#10-website-and-dashboards)
-11. [The app](#11-the-app)
+11. [The AI service and the app](#11-the-ai-service-and-the-app)
 12. [Public addresses: DNS, HTTPS and the tunnel](#12-public-addresses-dns-https-and-the-tunnel)
 13. [Check the installation](#13-check-the-installation)
 14. [Load the seed data or a backup](#14-load-the-seed-data-or-a-backup)
@@ -34,10 +34,13 @@
 | `tbpgdb` | PostgreSQL database for Strapi | `~/docker/postgres` |
 | `tbbe` | Strapi backend: login, licences, publishing, registration email | `~/docker/tbbe` |
 | `tbwwwp` | website, sign-up, Personal and Enterprise dashboards | `~/docker/tbwwwp` |
+| `tbhelpapp` | the AI service: the routes behind Ask AI, AI Create and the help assistant; holds your Gemini key | `~/docker/tbhelpapp` |
 | `tbrun-offline` | the Agilebars / Timebars / Costbars app (works offline after first load) | `~/docker/tbrunoffline` |
 | `cloudflared` | *optional* — Cloudflare Tunnel for public HTTPS addresses | `~/docker/cloudflared` |
 
-All containers share one Docker network (`postgres_tbpg_net`) and reach each other by name. Their
+All containers share one Docker network (`postgres_tbpg_net`) and reach each other by name. The app and the AI
+service also share a second network, `tbhelp`: the app's web server forwards `/ai/` to `tbhelpapp` over it
+(section 11.1). Their
 ports are bound to the server itself (`127.0.0.1`) — nothing is reachable from the network until you
 publish it through the tunnel or your own reverse proxy (section 12).
 
@@ -53,7 +56,7 @@ Project data lives in each user's browser; the server holds accounts, licences a
 
 ```text
  workstation                                   server
- ~/tbown  (this package, your copy)            ~/docker/postgres  tbbe  tbwwwp  tbrunoffline  cloudflared
+ ~/tbown  (this package, your copy)            ~/docker/postgres  tbbe  tbwwwp  tbhelpapp  tbrunoffline  cloudflared
    docker/   scripts/   seed/      ── 00-push-to-server.sh ──►   ~/docker/scripts/   ~/docker/seed/
                                                ~/docker/*/.env   ← created ON the server, never copied back
 ```
@@ -191,6 +194,7 @@ bash ~/docker/scripts/03-generate-secrets.sh
 |---|---|
 | `~/docker/tbbe/.env` | `BE_URL`, `FE_URL`; `SENDGRID_API_KEY` if you use email |
 | `~/docker/tbwwwp/.env` | your addresses *(draft — see section 10)* |
+| `~/docker/tbhelpapp/.env.local` | `GEMINI_API_KEY` — your own Google Gemini key (11.1) |
 | `~/docker/cloudflared/.env` | `TUNNEL_TOKEN` (section 12.1) |
 
 ```bash
@@ -254,7 +258,28 @@ payments and notifications stay off until you add their keys (*Administrators Gu
 *(draft)* The current website image has its public addresses fixed when it is built; the release
 image reads them from `.env` at run time.
 
-## 11. The app
+## 11. The AI service and the app
+
+### 11.1 The AI service (`tbhelpapp`)
+
+Ask AI, AI Create and the help assistant run in this container. It keeps your Gemini key on the server
+(never in the browser), and answers only users who are logged in to your Timebars Cloud (Strapi). Start it
+**before** the app: its `deploy.sh` creates the shared Docker network `tbhelp` that the app joins.
+
+1. Create a Gemini key in your own Google account (aistudio.google.com → *API keys*), restricted to the
+   Generative Language API. Turn on billing and a budget alert if you expect more than the free tier.
+2. Put it in the secrets file `03-generate-secrets.sh` created (it is `chmod 600`, never copied back):
+```bash
+nano ~/docker/tbhelpapp/.env.local      # GEMINI_API_KEY=<your key>;  STRAPI_URL is already http://tbbe:1337/api
+```
+3. Deploy, entering the `tbhelpapp` tag from `VERSION.md`:
+```bash
+cd ~/docker/tbhelpapp && ./deploy.sh
+```
+It prints `OK: ... is serving /api/ai/*` when the container answers. A site with no Strapi (no login) sets
+`AI_REQUIRE_LOGIN=false` in `.env.local` and keeps the server reachable from its own network only.
+
+### 11.2 The app
 
 One image serves every customer; your addresses go in `runtime-config.json`:
 ```bash
@@ -265,6 +290,8 @@ nano runtime-config.json        # your backend, website and one row per app host
 ```
 Each `sites` row maps a hostname to a product: `AB` Agilebars, `TB` Timebars, `CB` Costbars;
 `"offline": true` lets that address work offline. A hostname that is not listed gets no product.
+`aiBaseUrl` stays `/ai` (the app's own address, forwarded to `tbhelpapp`); change it only if you host the AI
+service somewhere else.
 
 ## 12. Public addresses: DNS, HTTPS and the tunnel
 
@@ -301,7 +328,8 @@ DNS records, certificates and their renewal are your responsibility.
 bash ~/docker/scripts/06-health-check.sh
 ```
 Then in a browser: open each app address (the product title matches the hostname), sign in, check
-*Show License*, publish a dataset and open it on the dashboard. On an app address, DevTools →
+*Show License*, publish a dataset and open it on the dashboard, and ask the help assistant a question
+(Ask AI works only when you are signed in). On an app address, DevTools →
 Application → Service Workers shows `sw.js` activated; tick *Offline* and press F5 — the app still loads.
 
 ## 14. Load the seed data or a backup
@@ -339,6 +367,7 @@ your document management system (see the *Data Synchronization, Backup, Recovery
 |---|---|
 | This package | workstation: `git pull` (or new release), then `bash scripts/00-push-to-server.sh myserver` |
 | App | server: `cd ~/docker/tbrunoffline && ./deploy.sh` with the new tag; roll back with the previous tag |
+| AI service | server: `cd ~/docker/tbhelpapp && ./deploy.sh` with the new tag; roll back with the previous tag |
 | Strapi / website | set the new tag in the stack's `.env`, `docker compose pull && docker compose up -d`; back up first |
 | PostgreSQL major version | backup → new `POSTGRES_TAG` with a new volume → restore |
 | Ubuntu, firewall, SSH | your administrator, under your policies |
@@ -353,6 +382,9 @@ your document management system (see the *Data Synchronization, Backup, Recovery
 | `permission denied ... docker.sock` | log out and back in after section 6 |
 | Docker install says *Cannot reach download.docker.com* | the server has no internet access to Docker (proxy, firewall); fix it and run the script again |
 | Strapi cannot reach the database | `DATABASE_*` in `tbbe/.env` must match `STRAPI_DB_*` in `postgres/.env` |
+| AI answers *502* | `tbhelpapp` is not running, or the app is not on network `tbhelp` — `docker network inspect tbhelp` lists both; start `tbhelpapp` first, then `docker compose up -d` in `tbrunoffline` |
+| AI answers *401* | the user is not signed in, the login expired, or `STRAPI_URL` in `tbhelpapp/.env.local` is wrong |
+| AI answers an error naming `GEMINI_API_KEY` | the key is missing in `tbhelpapp/.env.local`; add it and `docker compose up -d` |
 | App address shows the wrong product or none | add the hostname to `runtime-config.json`, then reload twice |
 | Login fails from a new address | the address is missing from Strapi's allowed origins (CORS) |
 | No service worker | not HTTPS, the address lacks `"offline": true`, or `runtime-config.json` is not served |

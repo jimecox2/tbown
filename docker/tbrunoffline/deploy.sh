@@ -20,6 +20,9 @@ fi
 image="jimecox807/tbrun:offline-$tag"
 
 docker pull "$image" || { echo "Pull failed: check the tag (VERSION.md) and your docker login."; exit 1; }
+# shared network with the AI service: the app's nginx proxies /ai/ to tbhelpapp
+docker network inspect tbhelp >/dev/null 2>&1 || docker network create tbhelp || exit 1
+
 echo "OFFLINE_TAG=offline-$tag" > .env
 docker compose up -d || exit 1
 docker compose ps
