@@ -19,7 +19,7 @@ rsync -rlt --itemize-changes "${KEEP[@]}" "$PKG/docker/"  "$SERVER:docker/"
 rsync -rlt --itemize-changes --exclude '00-push-to-server.sh' "$PKG/scripts/" "$SERVER:docker/scripts/"
 rsync -rlt --itemize-changes "$PKG/seed/"    "$SERVER:docker/seed/"
 rsync -rlt --itemize-changes "$PKG/VERSION.md" "$PKG/INSTALLATION_AND_CONFIGURATION_OF_THE_TIMEBARS_SYSTEM_CONTAINER_OPTION.md" "$SERVER:docker/"
-ssh "$SERVER" 'chmod 755 ~/docker/scripts/*.sh ~/docker/tbrunoffline/deploy.sh ~/docker/tbhelpapp/deploy.sh ~/docker/postgres/initdb/*.sh'
+ssh "$SERVER" 'chmod 755 ~/docker/scripts/*.sh ~/docker/tbrunoffline/deploy.sh ~/docker/tbhelp/deploy.sh ~/docker/postgres/initdb/*.sh'
 
 echo
 echo "Done: package is in ~/docker on $SERVER ($(git -C "$PKG" describe --tags --always 2>/dev/null || echo 'no git'))."
