@@ -1,0 +1,30 @@
+# AI service (helpapp, Next.js): the six AI routes (/api/ai/*) that call Google Gemini, plus the help app.
+# The app container's nginx proxies /ai/ here by name over the shared network `tbhelp`
+# (created by deploy.sh). Port 3010 is bound to this server only.
+# It also joins postgres_tbpg_net to reach Strapi by name (STRAPI_URL=http://tbbe:1337/api) for the login check.
+services:
+  tbhelpapp:
+    image: jimecox807/tbhelpapp:${HELPAPP_TAG:?run ./deploy.sh first, it sets HELPAPP_TAG in .env}
+    container_name: tbhelpapp
+    restart: always
+    env_file:
+      - .env.local            # GEMINI_API_KEY, STRAPI_URL ... (secrets; chmod 600; never committed)
+    environment:
+      NODE_ENV: production
+    ports:
+      - "127.0.0.1:3010:3010"
+    networks:
+      - tbhelp
+      - postgres_tbpg_net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3010 > /dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  tbhelp:
+    external: true            # shared with tbrun-offline; created by deploy.sh
+  postgres_tbpg_net:
+    external: true            # created by the postgres stack

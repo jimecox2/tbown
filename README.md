@@ -35,7 +35,7 @@ this repository or on your workstation.
 
 ## Not in here
 
-- **The application images** — pulled from Docker Hub (`jimecox807/tbrun`, `tbbe`, `tbwwwp`).
+- **The application images** — pulled from Docker Hub (`jimecox807/tbrun`, `tbbe`, `tbwwwp`, `tbhelpapp`).
 - **Your secrets** — `.env` files are created on the server and ignored by git.
 - **Decision documents** — see *Customer Ownership and Installation Options* and the
   *Administrators Guide* (in the Timebars help documentation).

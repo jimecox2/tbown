@@ -2,6 +2,7 @@
   "apiUrl": "https://be2.example.com/api",
   "wwwUrl": "https://www.example.com",
   "opUrl": "",
+  "aiBaseUrl": "/ai",
   "sites": [
     { "host": "agile.example.com", "product": "AB", "offline": true },
     { "host": "pmrm.example.com",  "product": "TB", "offline": true },

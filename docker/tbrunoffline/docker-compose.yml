@@ -12,7 +12,10 @@ services:
       - ./runtime-config.json:/usr/share/nginx/html/runtime-config.json:ro
     networks:
       - postgres_tbpg_net
+      - tbhelp                # AI: this app's nginx proxies /ai/ to the tbhelpapp container
 
 networks:
   postgres_tbpg_net:
     external: true
+  tbhelp:
+    external: true          # shared with tbhelpapp; created by deploy.sh (either stack)

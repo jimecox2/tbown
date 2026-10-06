@@ -18,7 +18,7 @@ mkdir -p "$DEST"; chmod 700 "$DEST_ROOT" "$DEST"
 
 docker exec tbpgdb pg_dump -U "$POSTGRES_USER" -d "$STRAPI_DB_NAME" -Fc > "$DEST/strapi.dump"
 tar czf "$DEST/uploads.tar.gz" -C "$ROOT/tbbe/public" uploads
-tar czf "$DEST/env-files.tar.gz" -C "$ROOT" $(cd "$ROOT" && ls -d */.env 2>/dev/null)
+tar czf "$DEST/env-files.tar.gz" -C "$ROOT" $(cd "$ROOT" && ls -d */.env */.env.local 2>/dev/null)
 chmod 600 "$DEST"/*
 (cd "$DEST" && sha256sum * > SHA256SUMS)
 
