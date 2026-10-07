@@ -6,7 +6,7 @@ Tested together on the rehearsal server:
 
 | Component | Image | Tag | Notes |
 |---|---|---|---|
-| App (offline-capable) | `jimecox807/tbrun` | `offline-v2` | reads `runtime-config.json` — one image for every customer |
+| App (offline-capable) | `jimecox807/tbrun` | `offline-v3` | reads `runtime-config.json` — one image for every customer |
 | Strapi backend | `jimecox807/tbbe` | `latest` | Strapi 4.14.2 on Node 16; runs on PostgreSQL 16 |
 | AI service (helpapp) | `jimecox807/tbhelpapp` | `v1` | routes `/api/ai/*`; needs your Gemini key; checks the Timebars Cloud login |
 | Website / dashboards | `jimecox807/tbwwwp` | `rlan-test` (rehearsal only) | release image will read its addresses at run time |
