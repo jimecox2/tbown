@@ -17,7 +17,7 @@ services:
       - tbhelp
       - postgres_tbpg_net
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3010 > /dev/null 2>&1 || exit 1"]
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3010/api/ai/help',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 3

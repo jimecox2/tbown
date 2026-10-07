@@ -283,8 +283,10 @@ server, stop and remove that one first: `cd ~/docker/tbhelpapp && docker compose
 
 It prints `OK: ... is serving /api/ai/*` when the container answers. The AI service needs **no public
 address**: no DNS record and no tunnel entry. The browser only calls the app's own address, and the app
-forwards `/ai/` to this container. `docker ps` may show `tbhelpapp` as *unhealthy* (its healthcheck tests
-the home page, which logs a harmless `sharp` image-optimiser message); AI keeps working. A site with no Strapi (no login) sets
+forwards `/ai/` to this container.
+Images up to `v1` showed `tbhelpapp` as *unhealthy* (the check tested the home page, which logs a
+harmless `sharp` image-optimiser message); the compose file in this package now tests the AI route, so
+`docker compose up -d` in `~/docker/tbhelp` clears it. A site with no Strapi (no login) sets
 `AI_REQUIRE_LOGIN=false` in `.env.local` and keeps the server reachable from its own network only.
 
 ### 11.2 The app
