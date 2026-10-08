@@ -1,6 +1,7 @@
 {
   "apiUrl": "https://be2.example.com/api",
   "wwwUrl": "https://www.example.com",
+  "cloudUrl": "https://cloud.example.com",
   "opUrl": "",
   "aiBaseUrl": "/ai",
   "sites": [

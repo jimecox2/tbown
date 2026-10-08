@@ -27,11 +27,13 @@ for s in postgres tbbe tbwwwp cloudflared; do fill "$s"; done
 H="$ROOT/tbhelp"
 if [ -f "$H/.env.example" ]; then
   if [ -f "$H/.env.local" ]; then echo "kept:    $H/.env.local (already exists)"
-  else cp "$H/.env.example" "$H/.env.local"; chmod 600 "$H/.env.local"; echo "created: $H/.env.local"; fi
+  else cp "$H/.env.example" "$H/.env.local"; chmod 600 "$H/.env.local"
+    sed -i "s|^NEXTAUTH_SECRET=CHANGE_ME|NEXTAUTH_SECRET=$(rnd)|" "$H/.env.local"
+    echo "created: $H/.env.local"; fi
 fi
 echo
 echo "Now edit the values that are yours (addresses, email key, tunnel token):"
 echo "  $ROOT/tbbe/.env          BE_URL, FE_URL, SENDGRID_API_KEY"
 echo "  $ROOT/tbwwwp/.env        your addresses"
-echo "  $ROOT/tbhelp/.env.local   GEMINI_API_KEY (your own Google Gemini key; AI needs it)"
+echo "  $ROOT/tbhelp/.env.local   GEMINI_API_KEY (your own Google Gemini key; AI needs it), NEXTAUTH_URL, STRAPI_ADMIN_TOKEN"
 echo "  $ROOT/cloudflared/.env   TUNNEL_TOKEN (paste it; cloudflared will not start without it)"

@@ -12,6 +12,13 @@ if ! grep -q '^GEMINI_API_KEY=.' .env.local; then
   echo "GEMINI_API_KEY is not set in .env.local."
   exit 1
 fi
+# Timebars Cloud sign-in needs both (03-generate-secrets.sh sets NEXTAUTH_SECRET; NEXTAUTH_URL is your Cloud address)
+for v in NEXTAUTH_SECRET NEXTAUTH_URL; do
+  if grep -q "^$v=CHANGE_ME" .env.local || ! grep -q "^$v=." .env.local; then
+    echo "$v is not set in .env.local (see .env.example)."
+    exit 1
+  fi
+done
 
 current=$(grep -s '^HELPAPP_TAG=' .env | cut -d= -f2)
 [ -n "$current" ] && echo "Currently deployed: $current"
