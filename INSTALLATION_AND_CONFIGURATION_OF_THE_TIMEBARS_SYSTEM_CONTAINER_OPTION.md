@@ -326,6 +326,8 @@ offline mode).
 | `agile.example.com`, `pmrm.example.com`, `ppm.example.com` | `http://tbrun-offline:80` |
 | `be2.example.com` | `http://tbbe:1337` |
 | `www.example.com` | `http://tbwwwp:3001` |
+| `cloud.example.com` (Timebars Cloud: dashboard, notifications, help) | `http://tbhelpapp:3010` |
+| *optional:* `help.example.com`, `dashboard.example.com`, `pubsets.example.com` | `http://tbhelpapp:3010` (each forwards to its page on `cloud.example.com`) |
 
 Keep *Rocket Loader* off and do not add *Cache Everything* rules for these hostnames.
 
