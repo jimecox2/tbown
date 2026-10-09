@@ -95,6 +95,8 @@ cd ~/tbown
 
 ## 3. Getting into the server from your workstation
 
+Installing on the machine you are working on? Skip this section and use `local` (section 5.1).
+
 Two files on the workstation are involved, and they do different jobs:
 
 | File | What it does | Used by |
@@ -178,6 +180,22 @@ All remaining steps run **on the server**. Open a session and stay in it:
 ssh myserver
 echo $TB                                                # e.g. /docker/compose/tbApps
 ```
+
+### 5.1 Installing on the machine you are working on (no SSH)
+
+When the package and Docker are on the **same machine** — you install on the computer you are sitting at,
+or your copy of the package is already on the server — there is nothing to connect to: no SSH server
+is needed and section 3 does not apply. Use the word `local` instead of a server name:
+```bash
+cd ~/tbown                                              # wherever your copy of the package is
+bash scripts/00-push-to-server.sh local /docker/compose
+source ~/.bashrc                                        # this terminal learns $TB (new terminals have it)
+echo $TB                                                # /docker/compose/tbApps
+```
+`local` is not a host name: `ssh local` or `ssh <this machine>` will fail (*Could not resolve hostname*,
+*Connection refused*) and is not needed. Skip every `ssh myserver` / `exit` line in this guide and run
+the commands in your own terminal. `echo $TB` printing nothing only means this terminal was open before
+the script set it: run `source ~/.bashrc`.
 
 ## 6. Install Docker
 
