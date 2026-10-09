@@ -12,17 +12,19 @@
 4. [Server requirements (your administrator)](#4-server-requirements-your-administrator)
 5. [Send the package to the server](#5-send-the-package-to-the-server)
 6. [Install Docker](#6-install-docker)
-7. [Volumes and secrets](#7-volumes-and-secrets)
-8. [Database](#8-database)
-9. [Strapi backend](#9-strapi-backend)
-10. [Website](#10-website)
-11. [The AI service and the app](#11-the-ai-service-and-the-app)
-12. [Public addresses: DNS, HTTPS and the tunnel](#12-public-addresses-dns-https-and-the-tunnel)
-13. [Check the installation](#13-check-the-installation)
-14. [Load the seed data or a backup](#14-load-the-seed-data-or-a-backup)
-15. [Backups](#15-backups)
-16. [Updates and rollback](#16-updates-and-rollback)
-17. [Troubleshooting](#17-troubleshooting)
+7. [Volumes, network and settings](#7-volumes-network-and-settings)
+8. [Public addresses: DNS, HTTPS and the tunnel](#8-public-addresses-dns-https-and-the-tunnel)
+9. [Database](#9-database)
+10. [Strapi backend](#10-strapi-backend)
+11. [Load the seed data or a backup](#11-load-the-seed-data-or-a-backup)
+12. [Website](#12-website)
+13. [Timebars Cloud and the AI service](#13-timebars-cloud-and-the-ai-service)
+14. [The app](#14-the-app)
+15. [The Strapi API token](#15-the-strapi-api-token)
+16. [Check the installation](#16-check-the-installation)
+17. [Backups](#17-backups)
+18. [Updates and rollback](#18-updates-and-rollback)
+19. [Troubleshooting](#19-troubleshooting)
 
 ---
 
@@ -52,7 +54,7 @@ Images are never rebuilt for your server.
 
 All containers share one Docker network, **`tbnet`**, and reach each other by name. Their ports are bound to
 the server itself (`127.0.0.1`) — nothing is reachable from the network until you publish it through the
-tunnel or your own reverse proxy (section 12).
+tunnel or your own reverse proxy (section 8).
 
 Project data lives in each user's browser; the server holds accounts, licences and published data.
 
@@ -80,7 +82,7 @@ are generated on the server and never leave it — not to your workstation, not 
 |---|---|
 | Admin workstation on the same network | Linux, macOS, or Windows with OpenSSH; `git` or a release download of this package; `rsync` |
 | Your hostnames | one per product you use (e.g. `pmrm.example.com`), plus the backend (`be2.example.com`) and website (`www.example.com`) |
-| DNS and HTTPS | **your responsibility** — a Cloudflare account with your domain (section 12.1), or your own DNS, reverse proxy and certificates (section 12.2) |
+| DNS and HTTPS | **your responsibility** — a Cloudflare account with your domain (section 8.1), or your own DNS, reverse proxy and certificates (section 8.2) |
 | Docker Hub access | a Docker Hub account with pull access granted by Timebars Ltd., and a read-only access token |
 | Optional services | SendGrid key (registration email), Pushover / Twilio (notifications) — see the *Administrators Guide* |
 
@@ -140,7 +142,7 @@ row has a check you can run from your workstation.
 | 4.3 | Correct time, synchronised (NTP) | `ssh myserver timedatectl \| grep synchronized` → `yes` |
 | 4.4 | A fixed address, and outbound internet to Docker Hub (and Cloudflare, if used) | `ssh myserver curl -sI https://registry-1.docker.io/v2/ \| head -1` → `401` (reachable) |
 | 4.5 | An admin user with `sudo`, key-only SSH from your admin network | `ssh -o PubkeyAuthentication=no myserver` is refused |
-| 4.6 | Host firewall: inbound SSH from the admin network only (plus 80/443 only if you run your own proxy on this server, section 12.2) | `ssh -t myserver sudo ufw status` (or your firewall's equivalent) |
+| 4.6 | Host firewall: inbound SSH from the admin network only (plus 80/443 only if you run your own proxy on this server, section 8.2) | `ssh -t myserver sudo ufw status` (or your firewall's equivalent) |
 | 4.7 | Installed: `curl`, `ca-certificates`, `rsync`, `tar`, `openssl`, `python3` | `ssh myserver 'command -v curl rsync tar openssl python3'` |
 | 4.8 | Docker is **not** pre-installed by another method (snap, distribution packages) — section 6 installs it | `ssh myserver 'command -v docker'` prints nothing |
 
@@ -205,9 +207,9 @@ and key that is made on the server, and lists the values still `CHANGE_ME` — t
 |---|---|
 | `~/docker/tbbe/.env.local` | `PUBLIC_URL` (your backend address), `CORS_ORIGINS` (your app, website and Cloud addresses); `SENDGRID_API_KEY` and `EMAIL_FROM` if you use email |
 | `~/docker/tbwww/.env.local` | `NEXTAUTH_URL` (your website address), `CLOUD_API_URL`, `CLOUD_URL`, `RUN_URL_AB` / `TB` / `CB`; Stripe and `STRAPI_ADMIN_TOKEN` when you use them |
-| `~/docker/tbhelp/.env.local` | `GEMINI_API_KEY` (11.1), `NEXTAUTH_URL` (your Cloud address), `CLOUD_API_URL`, `CLOUD_WWW_URL`, `RUN_URL_*` |
-| `~/docker/tbrun/runtime-config.json` | your backend, website and Cloud addresses, one row per app hostname (11.2) |
-| `~/docker/cloudflared/.env.local` | `TUNNEL_TOKEN` (section 12.1) |
+| `~/docker/tbhelp/.env.local` | `GEMINI_API_KEY` (13), `NEXTAUTH_URL` (your Cloud address), `CLOUD_API_URL`, `CLOUD_WWW_URL`, `RUN_URL_*` |
+| `~/docker/tbrun/runtime-config.json` | your backend, website and Cloud addresses, one row per app hostname (14) |
+| `~/docker/cloudflared/.env.local` | `TUNNEL_TOKEN` (section 8.1) |
 
 ```bash
 nano ~/docker/tbbe/.env.local
@@ -216,92 +218,16 @@ Each file's comments say what goes where. `deploy.sh` refuses to start a stack w
 still `CHANGE_ME`. Store a copy of the `.env.local` files in your password manager or secrets vault — a
 restore needs them.
 
-## 8. Database
+## 8. Public addresses: DNS, HTTPS and the tunnel
 
-```bash
-cd ~/docker/postgres && ./deploy.sh      # Enter = the tag in VERSION.md (16)
-docker logs tbpgdb | grep initdb         # "created role strapi and database strapi"
-```
-On first start an empty database is created for Strapi, with its own login (not the superuser).
-
-The log line `initdb: warning: enabling "trust" authentication for local connections` is the official
-PostgreSQL image's default: it applies only to connections *inside* the container (used by the
-backup and restore scripts through `docker exec`). Connections from other containers, such as
-Strapi, need the password, and the port is reachable only from the server itself (`127.0.0.1:5433`).
-
-## 9. Strapi backend
-
-```bash
-cd ~/docker/tbbe
-sudo chown -R 1000:1000 public/uploads
-./deploy.sh                               # waits for Strapi to start (a minute or two); /_health answers 204
-```
-Create the first administrator at `https://<your backend address>/admin` once the public address
-works (section 12), or now through an SSH tunnel from your workstation:
-`ssh -N -L 1337:localhost:1337 myserver`, then open `http://localhost:1337/admin`.
-
-Expected messages in the log on a first start:
-
-| Message | Meaning |
-|---|---|
-| `API key does not start with "SG."` | `SENDGRID_API_KEY` is empty — Strapi runs, but sends no email |
-| administration panel at `http://0.0.0.0:1337/admin` | the address Strapi listens on inside the container; use your public address or the SSH tunnel |
-
-**Next, load the seed data (section 14)** so the website has its content (products, help articles, FAQ).
-
-## 10. Website
-
-```bash
-cd ~/docker/tbwww && ./deploy.sh          # Enter = the tag in VERSION.md
-```
-Every address and key comes from `~/docker/tbwww/.env.local` at run time. Sign-in with email and password
-works against your backend. Google / GitHub / Facebook sign-in and payments stay off until you add their
-keys (*Administrators Guide*). The Personal and Enterprise dashboards are on Timebars Cloud (11.1); old
-`/dashboard` links on the website forward there.
-
-## 11. Timebars Cloud, the AI service and the app
-
-### 11.1 Timebars Cloud and the AI service (`tbhelpapp`)
-
-Ask AI, AI Create and the help assistant run in this container, with the Cloud pages (dashboards,
-notifications). It keeps your Gemini key on the server (never in the browser), and answers only users who
-are logged in to your Timebars Cloud (Strapi).
-
-1. Create a Gemini key in your own Google account (aistudio.google.com → *API keys*), restricted to the
-   Generative Language API. Turn on billing and a budget alert if you expect more than the free tier.
-2. Put it, and your Cloud address, in the settings file (`chmod 600`, never copied back):
-```bash
-nano ~/docker/tbhelp/.env.local      # GEMINI_API_KEY, NEXTAUTH_URL; STRAPI_URL is already http://tbbe:1337/api
-```
-3. Deploy:
-```bash
-cd ~/docker/tbhelp && ./deploy.sh
-```
-It checks that the AI routes answer. The AI service needs **no public address of its own**: the browser
-calls the app's address and the app forwards `/ai/` to this container over `tbnet`. A site with no Strapi
-(no login) sets `AI_REQUIRE_LOGIN=false` in `.env.local` and keeps the server reachable from its own
-network only.
-
-### 11.2 The app (`tbrun`)
-
-One image serves every hostname and every customer; your addresses go in `runtime-config.json`:
-```bash
-cd ~/docker/tbrun
-nano runtime-config.json        # your backend, website and Cloud, one row per app hostname
-./deploy.sh                     # Enter = the tag in VERSION.md
-```
-Each `sites` row maps a hostname to a product: `AB` Agilebars, `TB` Timebars, `CB` Costbars;
-`"offline": true` lets that address work offline. A hostname that is not listed gets no product.
-`aiBaseUrl` stays `/ai` (the app's own address, forwarded to `tbhelpapp`); change it only if you host the AI
-service somewhere else. After editing the file later: `docker compose up -d --force-recreate`, then reload
-the page twice.
-
-## 12. Public addresses: DNS, HTTPS and the tunnel
+Do this **now**, before starting the other stacks, so every address exists while you install: after each
+stack in sections 9–14, `07-check-urls.sh` (section 16) tests it from the outside. Until a stack is up its
+address answers 502 — expected.
 
 Choose **one** of the two ways. Either way, users reach the apps only over HTTPS (required for
 offline mode).
 
-### 12.1 Cloudflare Tunnel (no open ports)
+### 8.1 Cloudflare Tunnel (no open ports)
 
 1. In Cloudflare Zero Trust → Networks → Tunnels, create a tunnel (one per server) and paste its token into
    `~/docker/cloudflared/.env.local` (`TUNNEL_TOKEN=...`).
@@ -326,39 +252,146 @@ Keep *Rocket Loader* off and do not add *Cache Everything* rules for these hostn
 `.env.local` and `./deploy.sh`. Never run one token on two servers at once — Cloudflare would split
 visitors between them.
 
-### 12.2 Your own DNS, reverse proxy and certificates
+### 8.2 Your own DNS, reverse proxy and certificates
 
 See [`docker/proxy-example/README.md`](docker/proxy-example/README.md): which local address each
 hostname points at, where your certificate and key go, and an example nginx configuration.
 DNS records, certificates and their renewal are your responsibility.
 
-## 13. Check the installation
+## 9. Database
 
 ```bash
-bash ~/docker/scripts/06-health-check.sh
+cd ~/docker/postgres && ./deploy.sh      # Enter = the tag in VERSION.md (16)
+docker logs tbpgdb | grep initdb         # "created role strapi and database strapi"
 ```
-It lists every container with its health and running tag (and the tag in `VERSION.md` if they differ).
-Then in a browser: open each app address (the product title matches the hostname), sign in, check
-*Show License*, publish a dataset and open it on the dashboard, and ask the help assistant a question
-(Ask AI works only when you are signed in). On an app address, DevTools →
-Application → Service Workers shows `sw.js` activated; tick *Offline* and press F5 — the app still loads.
+On first start an empty database is created for Strapi, with its own login (not the superuser).
 
-## 14. Load the seed data or a backup
+The log line `initdb: warning: enabling "trust" authentication for local connections` is the official
+PostgreSQL image's default: it applies only to connections *inside* the container (used by the
+backup and restore scripts through `docker exec`). Connections from other containers, such as
+Strapi, need the password, and the port is reachable only from the server itself (`127.0.0.1:5433`).
+
+## 10. Strapi backend
+
+```bash
+cd ~/docker/tbbe
+sudo chown -R 1000:1000 public/uploads
+./deploy.sh                               # waits for Strapi to start (a minute or two); /_health answers 204
+```
+Create the first administrator at `https://<your backend address>/admin` once the public address
+works (section 8), or now through an SSH tunnel from your workstation:
+`ssh -N -L 1337:localhost:1337 myserver`, then open `http://localhost:1337/admin`.
+
+Expected messages in the log on a first start:
+
+| Message | Meaning |
+|---|---|
+| `API key does not start with "SG."` | `SENDGRID_API_KEY` is empty — Strapi runs, but sends no email |
+| administration panel at `http://0.0.0.0:1337/admin` | the address Strapi listens on inside the container; use your public address or the SSH tunnel |
+
+**Next, load the seed data (section 11)** so the website has its content (products, help articles, FAQ).
+
+## 11. Load the seed data or a backup
 
 ```bash
 bash ~/docker/scripts/04-restore.sh            # loads ~/docker/seed/seed.dump and seed-uploads.tar.gz
 ```
-The same script restores your own backups (section 15). It replaces the Strapi database, and ends
+The same script restores your own backups (section 17). It replaces the Strapi database, and ends
 by listing the tables that hold rows.
 
 After the seed is loaded:
 - Strapi admin (`https://<backend>/admin`): sign in with the administrator account supplied by
   Timebars Ltd. with this package, and change its password.
 - API tokens stored in the seed were made under Timebars Ltd.'s secrets and do not work on your
-  server — create new ones in Strapi (Settings → API Tokens) where you need them.
+  server — section 15 makes the one the website and Cloud need.
 - In the app, sign in with a demo account: *Show License* shows the product and its limits.
 
-## 15. Backups
+Check that Strapi reads the restored data:
+```bash
+docker exec tbpgdb psql -U strapi -d strapi -Atc "select 'users', count(*) from up_users union all select 'products', count(*) from products"
+bash ~/docker/scripts/07-check-urls.sh       # the Strapi lines are OK now
+```
+
+## 12. Website
+
+```bash
+cd ~/docker/tbwww && ./deploy.sh          # Enter = the tag in VERSION.md
+```
+Every address and key comes from `~/docker/tbwww/.env.local` at run time. Sign-in with email and password
+works against your backend. Google / GitHub / Facebook sign-in and payments stay off until you add their
+keys (*Administrators Guide*). The Personal and Enterprise dashboards are on Timebars Cloud (13); old
+`/dashboard` links on the website forward there.
+
+## 13. Timebars Cloud and the AI service
+
+Ask AI, AI Create and the help assistant run in this container, with the Cloud pages (dashboards,
+notifications). It keeps your Gemini key on the server (never in the browser), and answers only users who
+are logged in to your Timebars Cloud (Strapi).
+
+1. Create a Gemini key in your own Google account (aistudio.google.com → *API keys*), restricted to the
+   Generative Language API. Turn on billing and a budget alert if you expect more than the free tier.
+2. Put it, and your Cloud address, in the settings file (`chmod 600`, never copied back):
+```bash
+nano ~/docker/tbhelp/.env.local      # GEMINI_API_KEY, NEXTAUTH_URL; STRAPI_URL is already http://tbbe:1337/api
+```
+3. Deploy:
+```bash
+cd ~/docker/tbhelp && ./deploy.sh
+```
+It checks that the AI routes answer. The AI service needs **no public address of its own**: the browser
+calls the app's address and the app forwards `/ai/` to this container over `tbnet`. A site with no Strapi
+(no login) sets `AI_REQUIRE_LOGIN=false` in `.env.local` and keeps the server reachable from its own
+network only.
+
+## 14. The app
+
+One image serves every app hostname — with or without offline mode — and every customer; your addresses go in `runtime-config.json`:
+```bash
+cd ~/docker/tbrun
+nano runtime-config.json        # your backend, website and Cloud, one row per app hostname
+./deploy.sh                     # Enter = the tag in VERSION.md
+```
+Each `sites` row maps a hostname to a product: `AB` Agilebars, `TB` Timebars, `CB` Costbars;
+`"offline": true` lets that address work offline. A hostname that is not listed gets no product.
+`aiBaseUrl` stays `/ai` (the app's own address, forwarded to `tbhelpapp`); change it only if you host the AI
+service somewhere else. After editing the file later: `docker compose up -d --force-recreate`, then reload
+the page twice.
+
+In Cloudflare, every app hostname points at `http://tbrun:80` (section 8.1); an old route to
+`tbrun-offline` answers 502.
+
+## 15. The Strapi API token
+
+The website (confirming Google / GitHub sign-ups, docs sync) and Timebars Cloud (dashboard sources,
+Users & Roles) call Strapi with a server-side token.
+
+1. Open `https://<your backend address>/admin`, sign in, then Settings → API Tokens → **Create new API token**:
+   name `<server>-server`, duration **Unlimited**, type **Full access**. Save and copy it.
+2. On the server — paste at the prompt; it is not shown or kept in the shell history:
+```bash
+read -rsp 'Token: ' T; echo; cd ~/docker && sed -i "s#^STRAPI_ADMIN_TOKEN=.*#STRAPI_ADMIN_TOKEN=$T#" tbwww/.env.local tbhelp/.env.local; unset T
+(cd tbwww && docker compose up -d --force-recreate) && (cd tbhelp && docker compose up -d --force-recreate)
+```
+This is how every setting changes: edit `.env.local`, recreate the container — no new image.
+
+## 16. Check the installation
+
+```bash
+bash ~/docker/scripts/06-health-check.sh      # inside the server: every container, its health and running tag
+bash ~/docker/scripts/07-check-urls.sh        # from outside: every public address, through the tunnel or proxy
+```
+`06` compares each container's tag with `VERSION.md`. `07` reads your addresses from the settings files
+(`PUBLIC_URL`, both `NEXTAUTH_URL`s, the `sites` rows in `runtime-config.json`; add other app hostnames as
+arguments) and checks each page, the AI route, the offline worker, `runtime-config.json`, the dashboard
+redirect and Strapi's CORS answer for every app address. A FAIL line says what to fix (a missing route,
+a wrong container name, a missing CORS origin).
+
+Then in a browser: open each app address (the product title matches the hostname), sign in, check
+*Show License*, publish a dataset and open it on the dashboard, and ask the help assistant a question
+(Ask AI works only when you are signed in). On an app address, DevTools →
+Application → Service Workers shows `sw.js` activated; tick *Offline* and press F5 — the app still loads.
+
+## 17. Backups
 
 ```bash
 bash ~/docker/scripts/05-backup.sh           # try it once
@@ -372,7 +405,7 @@ restore.
 Users' own project data lives in their browsers: their backup files and synced spreadsheets go into
 your document management system (see the *Data Synchronization, Backup, Recovery and Retention* guide).
 
-## 16. Updates and rollback
+## 18. Updates and rollback
 
 | What | How |
 |---|---|
@@ -392,7 +425,7 @@ the new `.env.example`; for tbwww start from the new example — its variable na
 (`docker network rm postgres_tbpg_net tbhelp`) once everything is green. Change the tunnel routes to
 `http://tbrun:80` for the app hostnames.
 
-## 17. Troubleshooting
+## 19. Troubleshooting
 
 | Symptom | Fix |
 |---|---|
@@ -409,6 +442,8 @@ the new `.env.example`; for tbwww start from the new example — its variable na
 | App address shows the wrong product or none | add the hostname to `runtime-config.json`, `docker compose up -d --force-recreate` in `tbrun`, then reload twice |
 | Login fails from a new address | the address is missing from `CORS_ORIGINS` in `tbbe/.env.local`; add it and `docker compose up -d --force-recreate` |
 | No service worker | not HTTPS, the address lacks `"offline": true`, or `runtime-config.json` is not served |
+| `07-check-urls.sh`: 530 for an address | no published application for that hostname on the running tunnel — add it (section 8.1) |
+| `07-check-urls.sh`: 502 for an address | the route names the wrong container or port, or the container is down (`06-health-check.sh`) |
 | `docker logs cloudflared`: *lookup tbwwwp on 127.0.0.11:53: server misbehaving* (browser: Cloudflare 502) | that container is not running, or not on `tbnet` — `./deploy.sh` in its stack; the tunnel route needs no change |
 | Published application with `localhost:8687` does not work | inside the cloudflared container `localhost` is cloudflared itself — use the container name (`tbrun:80`, `tbbe:1337`, `tbwwwp:3001`, `tbhelpapp:3010`) |
 | `deploy.sh`: *Not set in .env.local: ...* | fill in those values (the file's comments say what goes there) and run it again |

@@ -19,7 +19,7 @@ up Agilebars, Timebars and Costbars on your own server. Keep it with the package
 | **Installation package** — compose files, scripts, seed data and the step-by-step guide | https://github.com/jimecox2/tbown (clone it, or download the ZIP from the green *Code* button) |
 | **The guide** — follow it in order | `INSTALLATION_AND_CONFIGURATION_OF_THE_TIMEBARS_SYSTEM_CONTAINER_OPTION.md` in the package |
 | **Application images** | Docker Hub, pulled during the install once we have granted your account access (step 2 below) |
-| **Seed data** — our product catalogue, website content and demo accounts | `seed/` in the package; loaded in section 14 of the guide |
+| **Seed data** — our product catalogue, website content and demo accounts | `seed/` in the package; loaded in section 11 of the guide |
 
 Your release: **«package release, e.g. v1.0.0»**. The image tags to use are listed in `VERSION.md` in the
 package; each stack's `deploy.sh` offers them.
@@ -43,7 +43,7 @@ package; each stack's `deploy.sh` offers them.
 
 3. **HTTPS:** decide how users will reach these addresses over HTTPS — a Cloudflare Tunnel (needs a
    Cloudflare account that manages your domain; no inbound ports) or your own DNS, reverse proxy and
-   certificates. Both are described in section 12 of the guide. DNS and certificates are yours.
+   certificates. Both are described in section 8 of the guide. DNS and certificates are yours.
 4. **Server:** ask your server administrator for a server that meets **section 4 of the guide**.
    In short: Ubuntu 24.04 or 26.04 LTS; at least 2 CPU cores, 4 GB RAM (with swap), 100 GB disk;
    patched and secured under your own policies; SSH key login for a **named admin user with `sudo`**
@@ -62,12 +62,12 @@ The guide has the detail; this is the shape of it.
 | 2 | Check the server meets the requirements | 4 |
 | 3 | Send the package to the server: `bash scripts/00-push-to-server.sh <server>` | 5 |
 | 4 | Install Docker, then log in to Docker Hub with your read-only token | 6 |
-| 5 | Create volumes and generate secrets (on the server, never copied anywhere) | 7 |
-| 6 | Start the database, then the backend | 8, 9 |
-| 7 | Load the seed data | 14 |
-| 8 | Start the website, then the app with your `runtime-config.json` | 10, 11 |
-| 9 | Publish your HTTPS addresses (tunnel or your proxy) | 12 |
-| 10 | Health check, first backup, nightly backup schedule | 13, 15 |
+| 5 | Volumes, network and settings (secrets generated on the server, never copied anywhere) | 7 |
+| 6 | Publish your HTTPS addresses (tunnel or your proxy) | 8 |
+| 7 | Start the database and the backend, load the seed data | 9, 10, 11 |
+| 8 | Start the website, Timebars Cloud and the app with your `runtime-config.json` | 12, 13, 14 |
+| 9 | Create the Strapi API token for the website and Cloud | 15 |
+| 10 | Health check and address check, first backup, nightly backup schedule | 16, 17 |
 
 Plan on half a day for a first install. Everything after step 3 runs in an SSH session on the server.
 
@@ -93,14 +93,14 @@ By phone or another channel you choose — not by email:
 
 - **Project data lives in each user's browser.** The app saves backup files automatically and syncs
   to spreadsheets; those files belong in your document management system, like any project file.
-  The server holds accounts, licences and published data — the nightly backup (guide section 15)
+  The server holds accounts, licences and published data — the nightly backup (guide section 17)
   protects that.
 - **Secrets stay on the server.** The scripts generate every password and key on the server; never
   send `.env.local` files to anyone, including us.
 - **Email is off until you add a key.** Sign-up confirmation and password reset need an email service
   (`SENDGRID_API_KEY` in `~/docker/tbbe/.env.local`, or your own mail server).
 - **Updates:** we announce new image tags; you pull the package update on your workstation, run
-  `00-push-to-server.sh`, and redeploy as the guide's section 16 shows.
+  `00-push-to-server.sh`, and redeploy as the guide's section 18 shows.
 
 ## 7. Help
 

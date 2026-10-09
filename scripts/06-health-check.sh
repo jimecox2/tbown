@@ -9,7 +9,7 @@ ROOT="${1:-$HOME/docker}"
 echo "Containers (running tag / tag in VERSION.md):"
 for pair in postgres:tbpgdb tbbe:tbbe tbwww:tbwwwp tbhelp:tbhelpapp tbrun:tbrun cloudflared:cloudflared; do
   stack=${pair%%:*}; c=${pair#*:}
-  s=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$c" 2>/dev/null || echo missing)
+  s=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$c" 2>/dev/null) || s=missing
   if [ "$c" = cloudflared ] && [ "$s" = missing ]; then echo "  --    cloudflared not used (own proxy)"; continue; fi
   img=$(docker inspect -f '{{.Config.Image}}' "$c" 2>/dev/null); tag=${img##*:}
   listed=$(awk -F'|' -v img="\`${img%:*}\`" '$3 ~ img {gsub(/[ `]/,"",$4); if ($4 ~ /^[0-9A-Za-z][0-9A-Za-z._-]*$/) print $4; exit}' "$ROOT/VERSION.md" 2>/dev/null)
