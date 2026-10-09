@@ -1,0 +1,25 @@
+# The Agilebars / Timebars / Costbars app: one image for every hostname and every server. This server's
+# addresses come from runtime-config.json (copy runtime-config.example.json and edit it); the image tag
+# is in .env (deploy.sh). The app's nginx proxies /ai/ to tbhelpapp over tbnet.
+# Port 8687 is bound to this server only; the app hostnames go through the tunnel (http://tbrun:80).
+services:
+  tbrun:
+    image: jimecox807/tbrun:${TBRUN_TAG:?run ./deploy.sh first, it sets TBRUN_TAG in .env}
+    container_name: tbrun
+    restart: always
+    ports:
+      - "127.0.0.1:8687:80"
+    volumes:
+      - ./runtime-config.json:/usr/share/nginx/html/runtime-config.json:ro
+    networks:
+      - tbnet
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1/runtime-config.json"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  tbnet:
+    external: true          # shared by every Timebars container; created by 02-create-volumes.sh

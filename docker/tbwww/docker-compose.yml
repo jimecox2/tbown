@@ -1,0 +1,25 @@
+# Website: sales, sign-up, profile, orders (tbwww, Next.js). Settings in .env.local (chmod 600) are read
+# at run time - one image for every server; the image tag in .env (deploy.sh).
+# Port 3001 is bound to this server only; the public address goes through the tunnel (http://tbwwwp:3001).
+services:
+  tbwwwp:
+    image: jimecox807/tbwwwp:${TBWWW_TAG:?run ./deploy.sh first, it sets TBWWW_TAG in .env}
+    container_name: tbwwwp
+    restart: always
+    env_file: .env.local
+    environment:
+      NODE_ENV: production
+    ports:
+      - "127.0.0.1:3001:3001"
+    networks:
+      - tbnet
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3001/robots.txt',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  tbnet:
+    external: true          # shared by every Timebars container; created by 02-create-volumes.sh

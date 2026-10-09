@@ -1,20 +1,19 @@
-# PostgreSQL for Strapi (tbbe). Creates the shared network postgres_tbpg_net that every other
-# stack joins, so containers reach each other by name (tbpgdb, tbbe, tbwwwp, tbrun-offline).
-# Port 5433 is bound to this server only (127.0.0.1) - reach it from another machine with an
-# SSH tunnel: ssh -N -L 5433:localhost:5433 <server>
+# PostgreSQL for Strapi (tbbe). Settings in .env.local (chmod 600); the image tag in .env (deploy.sh).
+# Port 5433 is bound to this server only - from another machine use an SSH tunnel:
+#   ssh -N -L 5433:localhost:5433 <server>
 services:
   tbpgdb:
-    image: postgres:${POSTGRES_TAG:-16}
+    image: postgres:${POSTGRES_TAG:?run ./deploy.sh first, it sets POSTGRES_TAG in .env}
     container_name: tbpgdb
     restart: always
-    env_file: .env
+    env_file: .env.local
     ports:
       - "127.0.0.1:5433:5432"
     volumes:
       - postgres_db:/var/lib/postgresql/data
       - ./initdb:/docker-entrypoint-initdb.d:ro     # runs once, on an empty database only
     networks:
-      - tbpg_net
+      - tbnet
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d postgres"]
       interval: 10s
@@ -29,15 +28,13 @@ services:
     container_name: pgadmin4
     profiles: ["tools"]
     restart: unless-stopped
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL:?set PGADMIN_DEFAULT_EMAIL in .env}
-      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD:?set PGADMIN_DEFAULT_PASSWORD in .env}
+    env_file: .env.local                            # PGADMIN_DEFAULT_EMAIL / PGADMIN_DEFAULT_PASSWORD
     ports:
       - "127.0.0.1:5050:80"
     volumes:
       - postgres_pgadmin:/var/lib/pgadmin
     networks:
-      - tbpg_net
+      - tbnet
 
 volumes:
   postgres_db:
@@ -46,4 +43,5 @@ volumes:
     external: true
 
 networks:
-  tbpg_net: {}              # Compose names it postgres_tbpg_net
+  tbnet:
+    external: true          # shared by every Timebars container; created by 02-create-volumes.sh

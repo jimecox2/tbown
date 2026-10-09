@@ -1,19 +1,27 @@
 # Versions
 
-Release: **rehearsal (October 2026)** — `v1.0.0` follows the updated website and backend images.
+The set of image tags tested together. `deploy.sh` offers the tag listed here, and
+`06-health-check.sh` shows any container running a different one.
 
-Tested together on the rehearsal server:
+Release: **next (October 2026)** — every stack deployed the same way (`.env.local` for settings, the tag
+in `.env`, network `tbnet`). The new images are being built: replace each (build pending) with the date
+tag the push script prints (e.g. `2026.10.12`).
 
 | Component | Image | Tag | Notes |
 |---|---|---|---|
-| App (offline-capable) | `jimecox807/tbrun` | `offline-v3` | reads `runtime-config.json` — one image for every customer |
-| Strapi backend | `jimecox807/tbbe` | `latest` | Strapi 4.14.2 on Node 16; runs on PostgreSQL 16 |
-| AI service (helpapp) | `jimecox807/tbhelpapp` | `v1` | routes `/api/ai/*`; needs your Gemini key; checks the Timebars Cloud login |
-| Website / dashboards | `jimecox807/tbwwwp` | `rlan-test` (rehearsal only) | release image will read its addresses at run time |
+| App | `jimecox807/tbrun` | (build pending) | one image for every hostname; reads `runtime-config.json`; offline worker per host |
+| Strapi backend | `jimecox807/tbbe` | (build pending) | public URL, CORS origins and email sender from `.env.local` |
+| Website | `jimecox807/tbwwwp` | (build pending) | reads every address and key from `.env.local` at run time |
+| Timebars Cloud + AI (helpapp) | `jimecox807/tbhelpapp` | (build pending) | routes `/api/ai/*` need your Gemini key; checks the Timebars Cloud login |
 | Database | `postgres` | `16` | official image; the seed (made on PostgreSQL 14) restores into it |
-| Database admin (optional) | `dpage/pgadmin4` | `latest` | profile `tools` |
-| Tunnel (optional) | `cloudflare/cloudflared` | `latest` | |
+| Database admin (optional) | `dpage/pgadmin4` | `latest` | profile `tools`; not started by `deploy.sh` |
+| Tunnel (optional) | `cloudflare/cloudflared` | `2026.10.0` | one connector per server |
 
 Seed: `seed/seed.dump` (Strapi database, 2.9 MB) and `seed/seed-uploads.tar.gz` (25 MB), October 2026.
 
 Server: Ubuntu 26.04 LTS, Docker Engine 29.8.2 and Compose plugin 5.6.0 from Docker's apt repository.
+
+## Previous: rehearsal (October 2026)
+
+`tbrun:offline-v3`, `tbbe:latest`, `tbhelpapp:v1`, `tbwwwp:rlan-test`, `postgres:16`, `cloudflared:latest`
+— stack folders `tbrunoffline` and `tbwwwp`, networks `postgres_tbpg_net` and `tbhelp`.

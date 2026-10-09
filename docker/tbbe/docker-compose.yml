@@ -1,19 +1,27 @@
-# Strapi backend (login, licences, publishing, registration email). Joins postgres_tbpg_net and
-# reaches the database by name (DATABASE_HOST=tbpgdb). Port 1337 is bound to this server only;
-# the public address (e.g. be2.example.com) goes through the tunnel or your reverse proxy.
+# Strapi backend (login, licences, publishing, registration email). Settings in .env.local (chmod 600);
+# the image tag in .env (deploy.sh). Reaches the database by name (DATABASE_HOST=tbpgdb) over tbnet.
+# Port 1337 is bound to this server only; the public address goes through the tunnel (http://tbbe:1337).
 services:
   tbbe:
-    image: jimecox807/tbbe:${TBBE_TAG:-latest}
+    image: jimecox807/tbbe:${TBBE_TAG:?run ./deploy.sh first, it sets TBBE_TAG in .env}
     container_name: tbbe
     restart: always
-    env_file: .env
+    env_file: .env.local
+    environment:
+      NODE_ENV: production
     ports:
       - "127.0.0.1:1337:1337"
     volumes:
       - ./public/uploads:/opt/app/public/uploads    # uploaded files; owned by uid 1000 (node)
     networks:
-      - postgres_tbpg_net
+      - tbnet
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:1337/_health',r=>process.exit(r.statusCode<400?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s     # Strapi takes a while to boot
 
 networks:
-  postgres_tbpg_net:
-    external: true          # created by the postgres stack
+  tbnet:
+    external: true          # shared by every Timebars container; created by 02-create-volumes.sh

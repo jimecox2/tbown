@@ -21,13 +21,8 @@ up Agilebars, Timebars and Costbars on your own server. Keep it with the package
 | **Application images** | Docker Hub, pulled during the install once we have granted your account access (step 2 below) |
 | **Seed data** — our product catalogue, website content and demo accounts | `seed/` in the package; loaded in section 14 of the guide |
 
-Your release:
-
-| Component | Image tag to use |
-|---|---|
-| App (`jimecox807/tbrun`) | `«offline-v2»` |
-| Backend (`jimecox807/tbbe`) | `«latest»` |
-| Website (`jimecox807/tbwwwp`) | `«tag»` |
+Your release: **«package release, e.g. v1.0.0»**. The image tags to use are listed in `VERSION.md` in the
+package; each stack's `deploy.sh` offers them.
 
 ## 2. Before you start — please do these first
 
@@ -43,7 +38,8 @@ Your release:
    | Timebars | `«pmrm.yourdomain»` |
    | Costbars | `«ppm.yourdomain»` |
    | Backend (Strapi) | `«be2.yourdomain»` |
-   | Website and dashboards | `«www.yourdomain»` |
+   | Website | `«www.yourdomain»` |
+   | Timebars Cloud (dashboards, AI help) | `«cloud.yourdomain»` |
 
 3. **HTTPS:** decide how users will reach these addresses over HTTPS — a Cloudflare Tunnel (needs a
    Cloudflare account that manages your domain; no inbound ports) or your own DNS, reverse proxy and
@@ -100,16 +96,16 @@ By phone or another channel you choose — not by email:
   The server holds accounts, licences and published data — the nightly backup (guide section 15)
   protects that.
 - **Secrets stay on the server.** The scripts generate every password and key on the server; never
-  send `.env` files to anyone, including us.
+  send `.env.local` files to anyone, including us.
 - **Email is off until you add a key.** Sign-up confirmation and password reset need an email service
-  (`SENDGRID_API_KEY` in `~/docker/tbbe/.env`, or your own mail server).
+  (`SENDGRID_API_KEY` in `~/docker/tbbe/.env.local`, or your own mail server).
 - **Updates:** we announce new image tags; you pull the package update on your workstation, run
   `00-push-to-server.sh`, and redeploy as the guide's section 16 shows.
 
 ## 7. Help
 
 If a step does not go as written, send us the output of
-`bash ~/docker/scripts/06-health-check.sh` and `docker logs --tail 100 <container>` — never `.env`
+`bash ~/docker/scripts/06-health-check.sh` and `docker logs --tail 100 <container>` — never `.env.local`
 files, tokens or passwords.
 
 «Your name»

@@ -14,8 +14,8 @@ The containers listen on this server only:
 Requirements:
 - **HTTPS is required** for the app's offline mode (browsers only run service workers over HTTPS).
 - Your browsers must trust the certificate's issuer (public CA, or your internal CA).
-- Add every public app name to `../tbrunoffline/runtime-config.json`, and every public origin to
-  Strapi's CORS allowlist.
+- Add every public app name to `../tbrun/runtime-config.json`, and every public origin to
+  `CORS_ORIGINS` in `../tbbe/.env.local`.
 - Do not cache `/index.html`, `/sw.js` or `/runtime-config.json` at the proxy.
 
 Example (nginx on the host, certificates in `/etc/ssl/timebars/`):

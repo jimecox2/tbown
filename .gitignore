@@ -3,7 +3,7 @@
 .env.local
 *.env
 !*.env.example
-docker/tbrunoffline/runtime-config.json
+docker/tbrun/runtime-config.json
 docker/tbbe/public/uploads/*
 !docker/tbbe/public/uploads/.gitkeep
 backups/

@@ -11,7 +11,7 @@ UPLOADS="${2:-}"
 [ -z "$UPLOADS" ] && [ -z "${1:-}" ] && UPLOADS="$ROOT/seed/seed-uploads.tar.gz"
 [ "$(id -u)" -ne 0 ] || { echo "Run this WITHOUT sudo, as your admin user."; exit 1; }
 docker info >/dev/null 2>&1 || { echo "Cannot use Docker as $USER. Log out and back in after 01-install-docker.sh (id -nG must list docker)."; exit 1; }
-set -a; . "$ROOT/postgres/.env"; set +a
+set -a; . "$ROOT/postgres/.env.local"; set +a
 
 [ -f "$DUMP" ] || { echo "No such file: $DUMP"; exit 1; }
 [ "$(stat -c %s "$DUMP")" -gt 100000 ] || { echo "$DUMP is only $(stat -c %s "$DUMP") bytes - not a database dump. Make it again."; exit 1; }
