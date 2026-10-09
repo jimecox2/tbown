@@ -44,7 +44,7 @@
 | File | What | Who writes it |
 |---|---|---|
 | `docker-compose.yml`, `.env.example`, `deploy.sh` | from this package | `00-push-to-server.sh` |
-| `.env.local` | your settings: passwords, keys and this server's addresses (`chmod 600`) | `03-generate-secrets.sh`, then you |
+| `.env.local` | your settings: passwords, keys and this server's addresses (`chmod 600`; edit with `nano`, section 7) | `03-generate-secrets.sh`, then you |
 | `.env` | one line: the image tag running now | `deploy.sh` |
 | `runtime-config.json` | `tbrun` only, instead of `.env.local`: the app's addresses (no secrets) | you |
 
@@ -241,9 +241,20 @@ and key that is made on the server, and lists the values still `CHANGE_ME` — t
 | `$TB/tbrun/runtime-config.json` | your backend, website and Cloud addresses, one row per app hostname (14) |
 | `$TB/cloudflared/.env.local` | `TUNNEL_TOKEN` (section 8.1) |
 
+**Editing a settings file** — open it in an editor, as your own user (no `sudo`; the files are yours):
 ```bash
-nano $TB/tbbe/.env.local
+nano $TB/tbbe/.env.local          # Ctrl+O, Enter to save; Ctrl+X to leave
+nano $TB/tbwww/.env.local
+nano $TB/tbhelp/.env.local
+nano $TB/tbrun/runtime-config.json
+nano $TB/cloudflared/.env.local   # not needed when this server keeps its own tunnel container
 ```
+Typing only the path (`$TB/tbbe/.env.local`) tries to *run* the file and answers *Permission denied* —
+that is not a permissions problem; put `nano` in front. The files are `chmod 600`: readable and writable
+by you, by nobody else, and never executable. If an editor cannot save one, the file was created with
+`sudo` at some point: fix it once with `sudo chown $USER: $TB/*/.env.local` and keep working without
+`sudo`.
+
 Each file's comments say what goes where. `deploy.sh` refuses to start a stack while a value it needs is
 still `CHANGE_ME`. Store a copy of the `.env.local` files in your password manager or secrets vault — a
 restore needs them.
@@ -476,6 +487,8 @@ the new `.env.example`; for tbwww start from the new example — its variable na
 | `07-check-urls.sh`: 502 for an address | the route names the wrong container or port, or the container is down (`06-health-check.sh`) |
 | `docker logs cloudflared`: *lookup tbwwwp on 127.0.0.11:53: server misbehaving* (browser: Cloudflare 502) | that container is not running, or not on `tbnet` — `./deploy.sh` in its stack; the tunnel route needs no change |
 | Published application with `localhost:8687` does not work | inside the cloudflared container `localhost` is cloudflared itself — use the container name (`tbrun:80`, `tbbe:1337`, `tbwwwp:3001`, `tbhelpapp:3010`) |
+| `bash: $TB/.../.env.local: Permission denied` | you typed the file's path as a command; open it with `nano $TB/.../.env.local` (section 7) |
+| An editor cannot save a `.env.local` | it was created with `sudo`: `sudo chown $USER: $TB/*/.env.local` once, then no `sudo` again |
 | `deploy.sh`: *Not set in .env.local: ...* | fill in those values (the file's comments say what goes there) and run it again |
 | `docker compose`: *env file .env.local not found* | run `03-generate-secrets.sh`, or `cp .env.example .env.local` and fill it in |
 
