@@ -26,6 +26,11 @@ else
 fi
 
 command -v rsync >/dev/null || { echo "rsync is missing on this workstation (sudo apt install rsync)."; exit 1; }
+if [ "$SERVER" != local ] && ! ssh -o ConnectTimeout=10 "$SERVER" true; then
+  echo "Cannot ssh to $SERVER (see the message above). Check the Host in ~/.ssh/config and that the server runs SSH."
+  echo "If $SERVER is this machine itself, use:  bash scripts/00-push-to-server.sh local <parent folder>"
+  exit 1
+fi
 run 'command -v rsync >/dev/null' || { echo "rsync is missing on $SERVER - your server admin installs it (sudo apt install rsync)."; exit 1; }
 
 # --- where on the server ---------------------------------------------------------------------------
