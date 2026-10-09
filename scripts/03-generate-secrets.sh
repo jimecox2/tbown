@@ -4,9 +4,9 @@
 # Values that are yours (addresses, Gemini key, tunnel token, Stripe ...) keep CHANGE_ME or the example
 # value: edit them, and deploy.sh refuses to start a stack while a required one is still CHANGE_ME.
 # The Strapi database password is the same in postgres/.env.local and tbbe/.env.local (generated once).
-# Run on the server:   bash ~/docker/scripts/03-generate-secrets.sh
+# Run on the server:   bash $TB/scripts/03-generate-secrets.sh
 set -euo pipefail
-ROOT="${1:-$HOME/docker}"
+ROOT="${1:-$(cd "$(dirname "$0")/.." && pwd)}"   # the tbApps folder this script lives in
 [ "$(id -u)" -ne 0 ] || { echo "Run this WITHOUT sudo, as your admin user."; exit 1; }
 [ -f "$ROOT/postgres/.env.example" ] || { echo "No stacks in $ROOT - run 00-push-to-server.sh from your workstation first."; exit 1; }
 rnd() { openssl rand -base64 33 | tr -d '/+=\n' | cut -c1-40; }

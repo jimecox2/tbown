@@ -11,7 +11,7 @@ servers, using the container option or the own-the-code option.
 | Path | What it is |
 |---|---|
 | [`INSTALLATION_AND_CONFIGURATION_OF_THE_TIMEBARS_SYSTEM_CONTAINER_OPTION.md`](INSTALLATION_AND_CONFIGURATION_OF_THE_TIMEBARS_SYSTEM_CONTAINER_OPTION.md) | **Start here** — the step-by-step installation guide |
-| `docker/` | one folder per stack (compose file, `.env.example`, `deploy.sh`, config templates); sent to `~/docker` on the server |
+| `docker/` | one folder per stack (compose file, `.env.example`, `deploy.sh`, config templates); sent to `<your folder>/tbApps` on the server |
 | `scripts/` | `00-push-to-server.sh` (runs on your workstation) and `01`–`06` (run on the server: Docker, volumes, secrets, restore, backup, health check) |
 | `seed/` | demo seed data for a first start (no real users) |
 | [`VERSION.md`](VERSION.md) | the image tags this release was tested with |
@@ -24,7 +24,7 @@ the installation from there:
 
 ```bash
 git clone https://github.com/jimecox2/tbown.git ~/tbown && cd ~/tbown
-bash scripts/00-push-to-server.sh myserver      # sends the stacks, scripts and seed to ~/docker on the server
+bash scripts/00-push-to-server.sh myserver      # sends the stacks, scripts and seed to <your folder>/tbApps on the server
 ssh myserver                                    # every further step runs on the server, as the guide says
 ```
 

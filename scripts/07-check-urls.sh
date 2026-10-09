@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # 07-check-urls.sh — check every public address from the outside, through the tunnel or your proxy.
 # Read-only. The addresses come from this server's settings, so there is nothing to type:
-#   app hosts      ~/docker/tbrun/runtime-config.json  (sites rows; add more as arguments)
-#   Strapi         PUBLIC_URL     in ~/docker/tbbe/.env.local
-#   website        NEXTAUTH_URL   in ~/docker/tbwww/.env.local
-#   Timebars Cloud NEXTAUTH_URL   in ~/docker/tbhelp/.env.local
+#   app hosts      $TB/tbrun/runtime-config.json  (sites rows; add more as arguments)
+#   Strapi         PUBLIC_URL     in $TB/tbbe/.env.local
+#   website        NEXTAUTH_URL   in $TB/tbwww/.env.local
+#   Timebars Cloud NEXTAUTH_URL   in $TB/tbhelp/.env.local
 #
-#   bash ~/docker/scripts/07-check-urls.sh                     # on the server
-#   bash ~/docker/scripts/07-check-urls.sh ab.rlan.ca tb.rlan.ca   # plus app hosts not in runtime-config.json
+#   bash $TB/scripts/07-check-urls.sh                     # on the server
+#   bash $TB/scripts/07-check-urls.sh ab.rlan.ca tb.rlan.ca   # plus app hosts not in runtime-config.json
 #
 # Cloudflare answers 530 / 1033 when a hostname has no published application on a running tunnel,
 # and 502 when the route exists but the container name or port is wrong (or the container is down).
-ROOT="${ROOT:-$HOME/docker}"
+ROOT="${ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"   # the tbApps folder this script lives in
 FAIL=0
 ok()   { printf '  \033[32mOK\033[0m    %s\n' "$1"; }
 bad()  { printf '  \033[31mFAIL\033[0m  %s\n' "$1"; FAIL=1; }

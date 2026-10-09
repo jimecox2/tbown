@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # 06-health-check.sh — is everything up, and on which tags? Read-only. On the server, any time:
-#   bash ~/docker/scripts/06-health-check.sh
+#   bash $TB/scripts/06-health-check.sh
 ok()   { printf '  \033[32mOK\033[0m    %s\n' "$1"; }
 bad()  { printf '  \033[31mFAIL\033[0m  %s\n' "$1"; FAIL=1; }
 FAIL=0
 docker info >/dev/null 2>&1 || { echo "Cannot use Docker as $USER. Log out and back in after 01-install-docker.sh (id -nG must list docker)."; exit 1; }
-ROOT="${1:-$HOME/docker}"
+ROOT="${1:-$(cd "$(dirname "$0")/.." && pwd)}"   # the tbApps folder this script lives in
 echo "Containers (running tag / tag in VERSION.md):"
 for pair in postgres:tbpgdb tbbe:tbbe tbwww:tbwwwp tbhelp:tbhelpapp tbrun:tbrun cloudflared:cloudflared; do
   stack=${pair%%:*}; c=${pair#*:}

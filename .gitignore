@@ -9,3 +9,4 @@ docker/tbbe/public/uploads/*
 backups/
 *.dump
 !seed/*.dump
+.push-targets

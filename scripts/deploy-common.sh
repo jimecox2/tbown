@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # deploy-common.sh — the steps every stack's deploy.sh runs, so all stacks deploy the same way.
-# Not run on its own: each ~/docker/<stack>/deploy.sh sets a few values and sources this file.
+# Not run on its own: each <tbApps>/<stack>/deploy.sh sets a few values and sources this file.
 #
 #   1. refuses sudo, checks Docker access
 #   2. checks .env.local (exists, chmod 600, required values filled in) — secrets and addresses
@@ -29,7 +29,7 @@ docker info >/dev/null 2>&1 || die "Cannot use Docker as $USER (id -nG must list
 # --- 2. settings ------------------------------------------------------------------------------
 if [ "${STACK_NO_ENV_LOCAL:-}" != 1 ]; then
   if [ ! -f .env.local ]; then
-    die "Missing .env.local: run ~/docker/scripts/03-generate-secrets.sh, or cp .env.example .env.local, fill it in and chmod 600 .env.local"
+    die "Missing .env.local: run ../scripts/03-generate-secrets.sh, or cp .env.example .env.local, fill it in and chmod 600 .env.local"
   fi
   if [ "$(stat -c %a .env.local)" != 600 ]; then chmod 600 .env.local && echo "Set .env.local to chmod 600."; fi
   missing=""
@@ -54,7 +54,7 @@ echo "Deployed now: ${current:-nothing}    In VERSION.md: ${listed:-not listed}"
 default=${current:-$listed}
 read -r -p "Tag to deploy (press Enter for '${default}'): " tag
 tag=${tag:-$default}
-[ -n "$tag" ] || die "No tag given. The tags are in ~/docker/VERSION.md."
+[ -n "$tag" ] || die "No tag given. The tags are in ../VERSION.md."
 [ "$tag" != latest ] || die "Refusing 'latest': give a release tag (VERSION.md), so a rollback is just the previous tag."
 if declare -F stack_check_tag >/dev/null; then stack_check_tag "$tag" || exit 1; fi
 
