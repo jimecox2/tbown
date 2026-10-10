@@ -582,6 +582,7 @@ import`, then `check` — it should show no changes. From then on edit `tbapps.c
 | An editor cannot save `tbapps.conf` | it was created with `sudo`: `sudo chown $USER: $TB/tbapps.conf $TB/*/.env.local` once, then no `sudo` again |
 | `deploy.sh`: *Not set: ...* | add those values to `tbapps.conf`, then `03-config.sh apply` |
 | `docker compose`: *env file .env.local not found* | `bash $TB/scripts/03-config.sh apply` (section 7.1) |
+| Strapi admin login fails; `docker logs tbbe` shows *originList.split is not a function* | the backend's own address was not an allowed origin. Fixed in `03-config.sh apply` (it now lists `BACKEND_HOST` too) and in tbbe images after 2026.10.09: run `bash $TB/scripts/03-config.sh apply` and recreate tbbe |
 | Strapi admin login fails with the right page shown | wrong email or password for the account in the restored data — list the admin accounts: `docker exec tbpgdb psql -U strapi -d strapi -Atc "select email, is_active, blocked from admin_users"`, and reset a password with `docker exec -it tbbe strapi admin:reset-user-password` (it asks for the email and the new password). After 5 failed tries Strapi refuses every login for that email for 5 minutes — wait before trying again |
 | `03-config.sh apply`: *Stopped: the database already exists* | `tbapps.conf` would change the database passwords — put the old part 4 back (from your vault, or `03-config.sh import` into another file) |
 
