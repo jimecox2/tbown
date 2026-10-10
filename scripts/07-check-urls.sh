@@ -23,7 +23,7 @@ hint() {
   case "$1" in
     000) echo "no answer - DNS name missing, or the tunnel/proxy is down" ;;
     530|1033) echo "Cloudflare has no route for this hostname - add the published application" ;;
-    502|503|504) echo "route exists but the container does not answer - check the service name and port, and docker ps" ;;
+    502|503|504) echo "route exists but the container does not answer - check the service name and port, docker ps, and that the tunnel container is on tbnet (06-health-check.sh)" ;;
     *) echo "unexpected answer" ;;
   esac
 }

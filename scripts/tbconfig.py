@@ -62,6 +62,23 @@ PART3_SECRETS = ["POSTGRES_PASSWORD", "STRAPI_DB_PASSWORD", "PGADMIN_DEFAULT_PAS
                  "API_TOKEN_SALT", "ADMIN_JWT_SECRET", "TRANSFER_TOKEN_SALT", "JWT_SECRET",
                  "WWW_NEXTAUTH_SECRET", "CLOUD_NEXTAUTH_SECRET"]
 ALL_KEYS = [k for k, *_ in PART1] + [k for k, _ in PART2] + [k for k, _ in PART3_FIXED] + PART3_SECRETS
+# Where each part-4 value already lives on a running server (stack, name in its .env.local). apply takes
+# a value missing from tbapps.conf from there before it generates a new one, so a lost or renamed
+# tbapps.conf never changes the passwords of an existing install.
+PART3_FROM_ENV = {
+    "POSTGRES_USER": [("postgres", "POSTGRES_USER")], "STRAPI_DB_NAME": [("postgres", "STRAPI_DB_NAME"), ("tbbe", "DATABASE_NAME")],
+    "STRAPI_DB_USER": [("postgres", "STRAPI_DB_USER"), ("tbbe", "DATABASE_USERNAME")],
+    "PGADMIN_DEFAULT_EMAIL": [("postgres", "PGADMIN_DEFAULT_EMAIL")],
+    "POSTGRES_PASSWORD": [("postgres", "POSTGRES_PASSWORD")],
+    "STRAPI_DB_PASSWORD": [("postgres", "STRAPI_DB_PASSWORD"), ("tbbe", "DATABASE_PASSWORD")],
+    "PGADMIN_DEFAULT_PASSWORD": [("postgres", "PGADMIN_DEFAULT_PASSWORD")],
+    "APP_KEYS": [("tbbe", "APP_KEYS")], "API_TOKEN_SALT": [("tbbe", "API_TOKEN_SALT")],
+    "ADMIN_JWT_SECRET": [("tbbe", "ADMIN_JWT_SECRET")], "TRANSFER_TOKEN_SALT": [("tbbe", "TRANSFER_TOKEN_SALT")],
+    "JWT_SECRET": [("tbbe", "JWT_SECRET")], "WWW_NEXTAUTH_SECRET": [("tbwww", "NEXTAUTH_SECRET")],
+    "CLOUD_NEXTAUTH_SECRET": [("tbhelp", "NEXTAUTH_SECRET")],
+}
+DB_NAMES = ("POSTGRES_USER", "STRAPI_DB_NAME", "STRAPI_DB_USER")        # never change on an existing database
+DB_PASSWORDS = ("POSTGRES_PASSWORD", "STRAPI_DB_PASSWORD")             # apply sets these in the database
 # Part 3 (optional): any other setting for one stack, e.g. TBHELP__AI_REQUIRE_LOGIN=false
 EXTRA_RE = re.compile(r"^(POSTGRES|TBBE|TBWWW|TBHELP|CLOUDFLARED)__([A-Z][A-Z0-9_]*)$")
 
@@ -135,7 +152,9 @@ def conf_text(v, domain_note=""):
     out += ["", "# === 3. Optional: any other setting for one stack, as STACK__NAME=value ===",
             "# e.g. TBHELP__AI_REQUIRE_LOGIN=false   (stacks: POSTGRES TBBE TBWWW TBHELP CLOUDFLARED)"]
     out += [f"{k}={val}" for k, val in sorted(v.items()) if EXTRA_RE.match(k)]
-    out += ["", "# === 4. Made on the server by 03-config.sh apply - do not edit, do not share ==="]
+    out += ["", "# === 4. Made on the server by 03-config.sh apply - do not share ===",
+            "# To change POSTGRES_PASSWORD or STRAPI_DB_PASSWORD: type the new value, apply (it sets it in the database).",
+            "# Never change the names (POSTGRES_USER, STRAPI_DB_NAME, STRAPI_DB_USER) once the database exists."]
     for k, _ in PART3_FIXED:
         out.append(f"{k}={v.get(k, '')}")
     for k in PART3_SECRETS:
@@ -323,6 +342,30 @@ def postgres_initialised():
     return bool(container_state("tbpgdb"))
 
 
+def sql_ident(name):
+    return '"' + name.replace('"', '""') + '"'
+
+
+def sql_literal(text):
+    return "'" + text.replace("'", "''") + "'"
+
+
+def set_db_passwords(superuser, roles):
+    """ALTER ROLE ... PASSWORD inside tbpgdb. roles: [(role, new password)]. The SQL goes in on stdin,
+    so the passwords never show in a process list. Local connections inside the container need no
+    password (the official image's default), so this works whatever the old passwords were."""
+    if container_state("tbpgdb") != "running":
+        say("tbpgdb is not running - start it first (cd $TB/postgres && ./deploy.sh), then apply again.")
+        return False
+    sql = "".join(f"ALTER ROLE {sql_ident(r)} PASSWORD {sql_literal(pw)};\n" for r, pw in roles)
+    res = subprocess.run(["docker", "exec", "-i", "tbpgdb", "psql", "-U", superuser, "-d", "postgres", "-q",
+                          "-v", "ON_ERROR_STOP=1"], input=sql, text=True, capture_output=True)
+    if res.returncode != 0:
+        say(f"Could not set the password in the database: {res.stderr.strip()}")
+        return False
+    return True
+
+
 # ---------------------------------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------------------------------
@@ -461,7 +504,8 @@ def cmd_apply(path, dry=False, assume_yes=False):
         say("apply runs on the server, in $TB. On a workstation use: 03-config.sh new")
         return 1
     if not os.path.isfile(path):
-        say(f"No {path} yet. Make one:  bash $TB/scripts/03-config.sh new    (or import, on a server set up before)")
+        say(f"No {path}. Renamed or moved? Put it back:  ls {path}*   (the running containers are not affected)")
+        say("Otherwise make one:  bash $TB/scripts/03-config.sh new   - apply then keeps this server's current passwords.")
         return 1
     if os.stat(path).st_mode & 0o077:
         os.chmod(path, 0o600)
@@ -474,22 +518,24 @@ def cmd_apply(path, dry=False, assume_yes=False):
         for e in errs:
             say(f"  - {e}")
         return 1
-    gen = {}
-    for k, d in PART3_FIXED:
-        if not v[k]:
-            gen[k] = d
-    for k in PART3_SECRETS:
-        if not v[k]:
-            gen[k] = ",".join(rnd(32) for _ in range(4)) if k == "APP_KEYS" else rnd()
-    if gen and not dry:
-        db_keys = {"POSTGRES_USER", "POSTGRES_PASSWORD", "STRAPI_DB_NAME", "STRAPI_DB_USER", "STRAPI_DB_PASSWORD"}
-        if postgres_initialised() and db_keys & set(gen):
-            say("The database already exists, but tbapps.conf has no database password yet.")
-            say("New passwords would lock Strapi out. Import the current ones first:")
-            say(f"  mv {path} {path}.new && bash $TB/scripts/03-config.sh import   (then copy your part 1 and 2 over)")
-            return 1
-        update_conf_in_place(path, gen)
-        say(f"Generated in tbapps.conf: {', '.join(sorted(gen))}")
+    # Part 4: an empty value is taken from this server's current .env.local files, else generated.
+    env = {s: read_kv(os.path.join(ROOT, s, ".env.local")) for s in STACKS}
+    gen, kept = {}, {}
+    for k in [k for k, _ in PART3_FIXED] + PART3_SECRETS:
+        if v[k]:
+            continue
+        cur = next((env[s].get(n) for s, n in PART3_FROM_ENV[k] if env[s].get(n) not in (None, "", "CHANGE_ME")), "")
+        if cur:
+            kept[k] = cur
+        else:
+            gen[k] = dict(PART3_FIXED).get(k) or (",".join(rnd(32) for _ in range(4)) if k == "APP_KEYS" else rnd())
+    if (gen or kept) and not dry:
+        update_conf_in_place(path, {**kept, **gen})
+        if kept:
+            say(f"Taken from this server's current settings into tbapps.conf: {', '.join(sorted(kept))}")
+        if gen:
+            say(f"Generated in tbapps.conf: {', '.join(sorted(gen))}")
+    v.update(kept)
     v.update(gen)
     changes = plan_changes(v)
     say("\nSettings files:")
@@ -500,16 +546,26 @@ def cmd_apply(path, dry=False, assume_yes=False):
             say(f"  {stack:<12} {', '.join(diff)}")
         else:
             say(f"  {stack:<12} unchanged")
+    # An existing database keeps its names; a changed password is set in the database first.
+    pg_diff = changes["postgres"][2] if postgres_initialised() and env["postgres"] else []
+    bad = [k for k in pg_diff if k in DB_NAMES]
+    pw = [k for k in pg_diff if k in DB_PASSWORDS]
+    if bad:
+        say(f"\nStopped: the database already exists and {', '.join(bad)} would change - Strapi would be locked out.")
+        say(f"Put the value(s) in tbapps.conf part 4 back to what {ROOT}/postgres/.env.local holds, then apply again.")
+        return 1
+    if pw:
+        say(f"\nDatabase password(s) changed in tbapps.conf: {', '.join(pw)} - apply sets them in the database"
+            " and recreates tbbe, so Strapi logs in with the new one.")
     if dry:
         say("\n(check only: nothing written)")
         return 0
-    if postgres_initialised():
-        bad = [k for k in changes["postgres"][2] if k in ("POSTGRES_USER", "POSTGRES_PASSWORD", "STRAPI_DB_NAME",
-                                                          "STRAPI_DB_USER", "STRAPI_DB_PASSWORD")]
-        if bad:
-            say(f"\nStopped: the database already exists and {', '.join(bad)} would change - Strapi would be locked out.")
-            say("Put the old values back in tbapps.conf part 4 (03-config.sh import shows them), then apply again.")
+    if pw:
+        roles = [(v["POSTGRES_USER"] if k == "POSTGRES_PASSWORD" else v["STRAPI_DB_USER"], v[k]) for k in pw]
+        if not set_db_passwords(env["postgres"].get("POSTGRES_USER") or v["POSTGRES_USER"], roles):
+            say("Nothing written; the database still has the old password(s).")
             return 1
+        say(f"Set in the database: {', '.join(pw)}")
     for stack, (p, text, diff) in changes.items():
         if diff:
             # runtime-config.json holds no secrets and must be readable by nginx inside the container

@@ -133,8 +133,9 @@ URLs each container uses, the list of browser addresses Strapi accepts (CORS) an
 
 | Setting | What it protects | If it changes later |
 |---|---|---|
-| `POSTGRES_PASSWORD` | the database administrator login (admin use only) | — |
-| `STRAPI_DB_NAME`, `STRAPI_DB_USER`, `STRAPI_DB_PASSWORD` | Strapi's own database and login, created on the first database start | Strapi can no longer open its database — **never change after the first start** |
+| `POSTGRES_PASSWORD` | PostgreSQL's administrator login `pgsuper` (backup and restore scripts, admin use only) | type the new value in `tbapps.conf` and `apply`: it sets the new password in the database |
+| `STRAPI_DB_PASSWORD` | the login Strapi uses to open its database (role `strapi`) | the same: `apply` sets it in the database, then recreates `tbbe` so Strapi uses it |
+| `POSTGRES_USER`, `STRAPI_DB_NAME`, `STRAPI_DB_USER` | the names: `pgsuper`, database `strapi`, role `strapi` | **never change** once the database exists — `apply` refuses |
 | `APP_KEYS` | signs Strapi's session cookies (four values) | users are signed out once |
 | `ADMIN_JWT_SECRET` | signs Strapi admin-panel logins | admins are signed out once |
 | `JWT_SECRET` | signs the logins of app and website users | every user is signed out once |
@@ -143,9 +144,22 @@ URLs each container uses, the list of browser addresses Strapi accepts (CORS) an
 | `WWW_NEXTAUTH_SECRET`, `CLOUD_NEXTAUTH_SECRET` | sign the website's and Cloud's session cookies | users of that site are signed out once |
 | `PGADMIN_DEFAULT_PASSWORD` | the optional pgAdmin page | — |
 
-`apply` makes each one once with a strong random value and never changes it. To make one by hand (for
-example to move an existing server's value in): `openssl rand -base64 32`. When you move an installation to
-a new server, bring its `tbapps.conf` along — the same part 4 keeps every login and token working.
+`apply` makes each one once with a strong random value and never changes it on its own. If part 4 is empty
+on a server that is already running (the file was lost, renamed or made again with `new`), `apply` takes
+the values the server uses now from its `.env.local` files instead of making new ones — nothing gets locked
+out. To make a value by hand: `openssl rand -base64 32`. When you move an installation to a new server,
+bring its `tbapps.conf` along — the same part 4 keeps every login and token working.
+
+**Three different passwords — do not mix them up**
+
+| Password | Who uses it | Where it is kept | How to change it |
+|---|---|---|---|
+| `POSTGRES_PASSWORD` | PostgreSQL administrator `pgsuper` | `tbapps.conf` part 4 | edit `tbapps.conf`, `03-config.sh apply` |
+| `STRAPI_DB_PASSWORD` | Strapi, to open its database `strapi` | `tbapps.conf` part 4 | edit `tbapps.conf`, `03-config.sh apply` |
+| Strapi **admin panel** password | you, at `https://<BACKEND_HOST>/admin` | inside the database (table `admin_users`) — **not** in `tbapps.conf` | `docker exec -it tbbe strapi admin:reset-user-password` (section 11) |
+
+The admin panel accounts are data: loading the seed or a backup (section 11) brings in the accounts and
+passwords of the server it was made on, and replaces whatever you set before.
 
 **Coming from an older Timebars server `.env`?** These names changed or are no longer used:
 
@@ -326,7 +340,8 @@ bash $TB/scripts/03-config.sh apply
 ```
 `apply` checks the file (hostnames only, no `https://`, no address used twice, emails look like emails),
 generates every password and key that is made on the server — the first time only, kept from then on —
-writes them into part 4 of `tbapps.conf`, and writes each stack's `.env.local` and
+writes them into part 4 of `tbapps.conf`, sets a changed `POSTGRES_PASSWORD` or `STRAPI_DB_PASSWORD` in
+the running database, and writes each stack's `.env.local` and
 `tbrun/runtime-config.json`. It lists what changed per stack and, if those containers are already
 running, offers to recreate them. `bash $TB/scripts/03-config.sh check` shows the same list without
 writing anything.
@@ -338,12 +353,17 @@ The file has four parts:
 | 1. Your addresses | `APP_AB_HOST`, `APP_TB_HOST`, `APP_CB_HOST`, `APP_OFFLINE`, `EXTRA_APP_HOSTS` (e.g. `ab.example.com:AB tb.example.com:TB`), `BACKEND_HOST`, `WEBSITE_HOST`, `CLOUD_HOST`, `EMAIL_FROM` … | you (`new` fills them) |
 | 2. Keys you paste | `TUNNEL_TOKEN`, `GEMINI_API_KEY`, `SENDGRID_API_KEY`, `STRAPI_ADMIN_TOKEN`, Stripe (section 2.1) | you |
 | 3. Optional extras | any other setting for one stack, e.g. `TBHELP__AI_REQUIRE_LOGIN=false` | you, rarely |
-| 4. Made on the server | database passwords, Strapi secrets, sign-in secrets | `apply` — never edit |
+| 4. Made on the server | database passwords, Strapi secrets, sign-in secrets | `apply` — edit only to change a database password (section 2.1) |
 
 **Keep a copy of `tbapps.conf` in your password manager or secrets vault**: it holds every password of the
 installation, and a restore or a move to another server starts from it. It is `chmod 600`; edit it with
 `nano $TB/tbapps.conf` as your own user (no `sudo`). Typing only a file's path tries to *run* it and answers
 *Permission denied* — put `nano` in front.
+
+**Lost or renamed `tbapps.conf`?** The containers keep running — they read their `.env.local` files, not
+`tbapps.conf` — but `apply` stops with *No tbapps.conf*. Rename it back (`ls $TB/tbapps.conf*` shows the
+copies). If it is gone, run `03-config.sh new` and `apply`: part 4 is filled from the server's current
+settings, so every password stays as it is.
 
 **A server set up before `tbapps.conf`** (settings in `.env.local` files): make the file from what is
 there, keeping every password, then check that nothing would change:
@@ -379,6 +399,17 @@ offline mode).
 | *optional:* `help.example.com`, `dashboard.example.com`, `pubsets.example.com` | `http://tbhelpapp:3010` (each forwards to its page on `cloud.example.com`) |
 
 Keep *Rocket Loader* off and do not add *Cache Everything* rules for these hostnames.
+
+**A tunnel container you already run** (another name, e.g. `cloudflare`, started from Portainer or another
+compose file — leave `TUNNEL_TOKEN` empty): put it on the Timebars network, so it can reach the containers
+by name:
+```bash
+docker network connect tbnet cloudflare     # your tunnel container's name
+```
+Do this again whenever `tbnet` is removed and made again (a clean reinstall): the container is not put
+back on the network by itself, and restarting it does not help. `06-health-check.sh` shows *tunnel
+container … is NOT on tbnet* when this is needed — the symptom is every public address answering **502**
+while `06` shows all containers healthy.
 
 **Moving to another server** keeps every route: stop cloudflared on the old server
 (`cd $TB/cloudflared && docker compose down`), then put the same token in the new server's
@@ -429,12 +460,21 @@ Expected messages in the log on a first start:
 ```bash
 bash $TB/scripts/04-restore.sh            # loads $TB/seed/seed.dump and seed-uploads.tar.gz
 ```
-The same script restores your own backups (section 17). It replaces the Strapi database, and ends
-by listing the tables that hold rows.
+The same script restores your own backups (section 17). It stops Strapi, drops and re-creates the Strapi
+database (`STRAPI_DB_NAME`, normally `strapi`, owned by role `strapi`), loads the dump into it — whatever
+database name the dump came from — starts Strapi again and lists the tables that hold rows. Your
+`tbapps.conf` passwords do not change: the dump holds data, not database logins.
 
 After the seed is loaded:
-- Strapi admin (`https://<backend>/admin`): sign in with the administrator account supplied by
-  Timebars Ltd. with this package, and change its password.
+- **Strapi admin panel** (`https://<backend>/admin`): the admin accounts came with the data, with the
+  passwords of the server the dump was made on. See which accounts there are, and set your own password:
+  ```bash
+  docker exec tbpgdb psql -U strapi -d strapi -Atc "select email from admin_users"
+  docker exec -it tbbe strapi admin:reset-user-password      # asks for the email, then the new password
+  ```
+  Keep that password in your vault. **Every restore brings the dump's passwords back** — run the reset
+  again after each one. (This is the admin panel login only; it is not `POSTGRES_PASSWORD` or
+  `STRAPI_DB_PASSWORD`.)
 - API tokens stored in the seed were made under Timebars Ltd.'s secrets and do not work on your
   server — section 15 makes the one the website and Cloud need.
 - In the app, sign in with a demo account: *Show License* shows the product and its limits.
@@ -566,7 +606,9 @@ import`, then `check` — it should show no changes. From then on edit `tbapps.c
 | `permission denied ... docker.sock` | log out and back in after section 6 |
 | Docker install says *Cannot reach download.docker.com* | the server has no internet access to Docker (proxy, firewall); fix it and run the script again |
 | `tbpgdb` keeps restarting; log: *database files are incompatible with server … initialized by PostgreSQL version 14* | the volume `postgres_db` holds a database from an earlier install. Not needed: `cd $TB/postgres && docker compose down; docker volume rm postgres_db; bash $TB/scripts/02-create-volumes.sh; ./deploy.sh`. Needed: back it up with the old version first, then restore it into the new one (`04-restore.sh`) |
-| Strapi cannot reach the database | the database was made with other passwords than `tbapps.conf` part 4 holds — restore the old `tbapps.conf` from your vault or backup, apply |
+| Strapi cannot reach the database (`password authentication failed for user "strapi"`) | the database has another password than `tbapps.conf` part 4 holds. Restore the old `tbapps.conf` from your vault or backup and apply — or keep the new value and apply: it sets it in the database |
+| Every public address answers 502 (`07`), but `06` shows everything healthy | the tunnel container is not on `tbnet` (typical after a clean reinstall, which removes and re-creates `tbnet`): `docker network connect tbnet <tunnel container>` — `06` names it (section 8.1) |
+| `03-config.sh apply`: *No tbapps.conf* | it was renamed or moved — `ls $TB/tbapps.conf*` and rename it back; or `03-config.sh new`, then apply (it keeps the server's passwords) |
 | AI answers *502* | `tbhelpapp` is not running, or it or `tbrun` is not on network `tbnet` — `docker network inspect tbnet` lists both; `./deploy.sh` in `tbhelp`, then in `tbrun` |
 | AI answers *503* "Could not check your login right now" | `tbhelpapp` cannot reach Strapi — `tbbe` is down, or a `TBHELP__STRAPI_URL` line in `tbapps.conf` overrides the right value (`http://tbbe:1337/api`); test: `docker exec tbhelpapp wget -S -O- http://tbbe:1337/api/users/me` answers 401/403 when healthy |
 | AI answers *401* | the user is not signed in, or the login expired |
@@ -583,8 +625,8 @@ import`, then `check` — it should show no changes. From then on edit `tbapps.c
 | `deploy.sh`: *Not set: ...* | add those values to `tbapps.conf`, then `03-config.sh apply` |
 | `docker compose`: *env file .env.local not found* | `bash $TB/scripts/03-config.sh apply` (section 7.1) |
 | Strapi admin login fails; `docker logs tbbe` shows *originList.split is not a function* | the backend's own address was not an allowed origin. Fixed in `03-config.sh apply` (it now lists `BACKEND_HOST` too) and in tbbe images after 2026.10.09: run `bash $TB/scripts/03-config.sh apply` and recreate tbbe |
-| Strapi admin login fails with the right page shown | wrong email or password for the account in the restored data — list the admin accounts: `docker exec tbpgdb psql -U strapi -d strapi -Atc "select email, is_active, blocked from admin_users"`, and reset a password with `docker exec -it tbbe strapi admin:reset-user-password` (it asks for the email and the new password). After 5 failed tries Strapi refuses every login for that email for 5 minutes — wait before trying again |
-| `03-config.sh apply`: *Stopped: the database already exists* | `tbapps.conf` would change the database passwords — put the old part 4 back (from your vault, or `03-config.sh import` into another file) |
+| Strapi admin login fails with the right page shown | wrong email or password for the account in the restored data (a restore brings back the dump's admin passwords, section 11) — list the admin accounts: `docker exec tbpgdb psql -U strapi -d strapi -Atc "select email, is_active, blocked from admin_users"`, and reset a password with `docker exec -it tbbe strapi admin:reset-user-password` (it asks for the email and the new password). After 5 failed tries Strapi refuses every login for that email for 5 minutes — wait before trying again |
+| `03-config.sh apply`: *Stopped: the database already exists and … would change* | a database **name** in part 4 (`POSTGRES_USER`, `STRAPI_DB_NAME`, `STRAPI_DB_USER`) differs from the running database — put back the value shown in `$TB/postgres/.env.local`. Passwords may change; names may not |
 
 For help, send the output of `bash $TB/scripts/06-health-check.sh` and
 `docker logs --tail 100 <container>` — never send `tbapps.conf`, `.env.local` files, tokens or passwords.
