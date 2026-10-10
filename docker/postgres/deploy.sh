@@ -6,13 +6,17 @@ STACK_TAG_VAR=POSTGRES_TAG
 STACK_CONTAINER=tbpgdb
 STACK_REQUIRED="POSTGRES_USER POSTGRES_PASSWORD STRAPI_DB_NAME STRAPI_DB_USER STRAPI_DB_PASSWORD"
 
-# A new major version cannot read the old data files: refuse it when the volume already has a database.
+# A new major version cannot read the old data files: refuse it when the volume already holds a database
+# of another version - a running one, or one left behind by an earlier install.
 stack_check_tag() {
   local ver
-  ver=$(docker exec tbpgdb cat /var/lib/postgresql/data/PG_VERSION 2>/dev/null)   # empty on a first install
+  ver=$(docker exec tbpgdb cat /var/lib/postgresql/data/PG_VERSION 2>/dev/null) || \
+  ver=$(docker run --rm --pull missing -v postgres_db:/d --entrypoint cat "postgres:$1" /d/PG_VERSION 2>/dev/null)
   if [ -n "$ver" ] && [ "${1%%.*}" != "$ver" ] && [ "${1%%-*}" != "$ver" ]; then
-    echo "The database volume holds PostgreSQL $ver data; tag $1 is another major version."
-    echo "Upgrade by backup and restore (05-backup.sh, new empty volume, 04-restore.sh), not by changing the tag."
+    echo "The volume postgres_db already holds a PostgreSQL $ver database; tag $1 cannot open it."
+    echo "  - It is this install's data: upgrade by backup and restore (05-backup.sh, new empty volume, 04-restore.sh)."
+    echo "  - It is left over from an earlier install and not needed: docker compose down; docker volume rm postgres_db;"
+    echo "    bash ../scripts/02-create-volumes.sh; ./deploy.sh"
     return 1
   fi
 }

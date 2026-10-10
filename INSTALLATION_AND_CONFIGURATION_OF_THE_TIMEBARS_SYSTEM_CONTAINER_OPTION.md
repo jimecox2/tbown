@@ -503,6 +503,7 @@ import`, then `check` — it should show no changes. From then on edit `tbapps.c
 | `apt`: *Temporary failure resolving* | the server has no DNS — your administrator sets gateway and DNS servers |
 | `permission denied ... docker.sock` | log out and back in after section 6 |
 | Docker install says *Cannot reach download.docker.com* | the server has no internet access to Docker (proxy, firewall); fix it and run the script again |
+| `tbpgdb` keeps restarting; log: *database files are incompatible with server … initialized by PostgreSQL version 14* | the volume `postgres_db` holds a database from an earlier install. Not needed: `cd $TB/postgres && docker compose down; docker volume rm postgres_db; bash $TB/scripts/02-create-volumes.sh; ./deploy.sh`. Needed: back it up with the old version first, then restore it into the new one (`04-restore.sh`) |
 | Strapi cannot reach the database | the database was made with other passwords than `tbapps.conf` part 4 holds — restore the old `tbapps.conf` from your vault or backup, apply |
 | AI answers *502* | `tbhelpapp` is not running, or it or `tbrun` is not on network `tbnet` — `docker network inspect tbnet` lists both; `./deploy.sh` in `tbhelp`, then in `tbrun` |
 | AI answers *503* "Could not check your login right now" | `tbhelpapp` cannot reach Strapi — `tbbe` is down, or a `TBHELP__STRAPI_URL` line in `tbapps.conf` overrides the right value (`http://tbbe:1337/api`); test: `docker exec tbhelpapp wget -S -O- http://tbbe:1337/api/users/me` answers 401/403 when healthy |
