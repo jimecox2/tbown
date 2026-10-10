@@ -36,7 +36,7 @@ this repository or on your workstation.
 ## Not in here
 
 - **The application images** — pulled from Docker Hub (`jimecox807/tbrun`, `tbbe`, `tbwwwp`, `tbhelpapp`).
-- **Your secrets and addresses** — each stack's `.env.local` is created on the server and ignored by git.
+- **Your settings** — one file, `tbapps.conf` (addresses, keys and passwords made on the server), made by `scripts/03-config.sh` and ignored by git.
 - **Decision documents** — see *Customer Ownership and Installation Options* and the
   *Administrators Guide* (in the Timebars help documentation).
 

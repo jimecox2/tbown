@@ -66,7 +66,7 @@ run "mkdir -p '$ROOT/scripts' '$ROOT/seed' '$ROOT/tbbe/public/uploads'" || {
 # --- copy ------------------------------------------------------------------------------------------
 KEEP=(--exclude '.env' --exclude '.env.local' --exclude 'runtime-config.json' --exclude 'public/uploads/***' --exclude '.gitkeep')
 rsync -rlt --itemize-changes "${KEEP[@]}" "$PKG/docker/"  "$DEST$ROOT/"
-rsync -rlt --itemize-changes --exclude '00-push-to-server.sh' "$PKG/scripts/" "$DEST$ROOT/scripts/"
+rsync -rlt --itemize-changes --exclude '00-push-to-server.sh' --exclude '__pycache__' "$PKG/scripts/" "$DEST$ROOT/scripts/"
 rsync -rlt --itemize-changes "$PKG/seed/"    "$DEST$ROOT/seed/"
 rsync -rlt --itemize-changes "$PKG/VERSION.md" "$PKG/INSTALLATION_AND_CONFIGURATION_OF_THE_TIMEBARS_SYSTEM_CONTAINER_OPTION.md" "$DEST$ROOT/"
 run "chmod 755 '$ROOT'/scripts/*.sh '$ROOT'/*/deploy.sh '$ROOT'/postgres/initdb/*.sh"

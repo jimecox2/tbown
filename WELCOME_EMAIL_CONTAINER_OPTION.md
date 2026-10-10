@@ -96,16 +96,16 @@ By phone or another channel you choose — not by email:
   The server holds accounts, licences and published data — the nightly backup (guide section 17)
   protects that.
 - **Secrets stay on the server.** The scripts generate every password and key on the server; never
-  send `.env.local` files to anyone, including us.
+  send `tbapps.conf` or `.env.local` files to anyone, including us.
 - **Email is off until you add a key.** Sign-up confirmation and password reset need an email service
-  (`SENDGRID_API_KEY` in `$TB/tbbe/.env.local`, or your own mail server).
+  (`SENDGRID_API_KEY` in `tbapps.conf`, or your own mail server).
 - **Updates:** we announce new image tags; you pull the package update on your workstation, run
   `00-push-to-server.sh`, and redeploy as the guide's section 18 shows.
 
 ## 7. Help
 
 If a step does not go as written, send us the output of
-`bash $TB/scripts/06-health-check.sh` and `docker logs --tail 100 <container>` — never `.env.local`
+`bash $TB/scripts/06-health-check.sh` and `docker logs --tail 100 <container>` — never `tbapps.conf`, `.env.local`
 files, tokens or passwords.
 
 «Your name»

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # 07-check-urls.sh — check every public address from the outside, through the tunnel or your proxy.
-# Read-only. The addresses come from this server's settings, so there is nothing to type:
-#   app hosts      $TB/tbrun/runtime-config.json  (sites rows; add more as arguments)
+# Read-only. The addresses come from this server's settings (written from tbapps.conf by 03-config.sh),
+# so there is nothing to type:
+#   app hosts      $TB/tbrun/runtime-config.json  (every sites row; add others as arguments)
 #   Strapi         PUBLIC_URL     in $TB/tbbe/.env.local
 #   website        NEXTAUTH_URL   in $TB/tbwww/.env.local
 #   Timebars Cloud NEXTAUTH_URL   in $TB/tbhelp/.env.local
@@ -35,30 +36,30 @@ APPS="$APPS $*"
 OFFLINE=$(python3 -c 'import json,sys; [print(r["host"]) for r in json.load(open(sys.argv[1])).get("sites",[]) if r.get("offline")]' "$ROOT/tbrun/runtime-config.json" 2>/dev/null)
 
 echo "Strapi ($BE):"
-if [ -z "$BE" ] || [ "$BE" = CHANGE_ME ]; then bad "PUBLIC_URL not set in tbbe/.env.local"; else
+if [ -z "$BE" ] || [ "$BE" = CHANGE_ME ]; then bad "PUBLIC_URL not set - 03-config.sh apply"; else
   c=$(code "$BE/_health"); [ "$c" = 204 ] && ok "/_health 204" || bad "/_health $c - $(hint "$c")"
   c=$(code "$BE/admin"); [ "$c" = 200 ] && ok "/admin 200" || bad "/admin $c - $(hint "$c")"
   c=$(code "$BE/api/products"); case "$c" in 200) ok "/api/products 200";; 403) note "/api/products 403 (not public on this database - fine if the site uses its token)";; *) bad "/api/products $c - $(hint "$c")";; esac
 fi
 
 echo "Website ($WWW):"
-if [ -z "$WWW" ] || [ "$WWW" = CHANGE_ME ]; then bad "NEXTAUTH_URL not set in tbwww/.env.local"; else
+if [ -z "$WWW" ] || [ "$WWW" = CHANGE_ME ]; then bad "website address not set - 03-config.sh apply"; else
   c=$(code "$WWW/"); [ "$c" = 200 ] && ok "home page 200" || bad "home page $c - $(hint "$c")"
   c=$(code "$WWW/sales/pricing"); [ "$c" = 200 ] && ok "/sales/pricing 200" || bad "/sales/pricing $c - $(hint "$c")"
-  curl -s -m 20 "$WWW/robots.txt" | grep -q "Sitemap: $WWW/sitemap.xml" && ok "robots.txt names this site ($WWW)" || bad "robots.txt does not name $WWW - check NEXTAUTH_URL"
+  curl -s -m 20 "$WWW/robots.txt" | grep -q "Sitemap: $WWW/sitemap.xml" && ok "robots.txt names this site ($WWW)" || bad "robots.txt does not name $WWW - 03-config.sh apply, then recreate tbwww"
   loc=$(curl -s -o /dev/null -m 20 -w '%{redirect_url}' "$WWW/dashboard")
-  [ "$loc" = "$CLOUD/dashboard" ] && ok "/dashboard -> $loc" || bad "/dashboard -> '${loc}' (expected $CLOUD/dashboard - check CLOUD_URL in tbwww/.env.local)"
+  [ "$loc" = "$CLOUD/dashboard" ] && ok "/dashboard -> $loc" || bad "/dashboard -> '${loc}' (expected $CLOUD/dashboard - 03-config.sh apply, then recreate tbwww)"
 fi
 
 echo "Timebars Cloud ($CLOUD):"
-if [ -z "$CLOUD" ] || [ "$CLOUD" = CHANGE_ME ]; then bad "NEXTAUTH_URL not set in tbhelp/.env.local"; else
+if [ -z "$CLOUD" ] || [ "$CLOUD" = CHANGE_ME ]; then bad "Cloud address not set - 03-config.sh apply"; else
   c=$(code "$CLOUD/"); [ "$c" = 200 ] && ok "home page 200" || bad "home page $c - $(hint "$c")"
   c=$(code -X POST -H 'Content-Type: application/json' -d '{}' "$CLOUD/api/ai/help")
   case "$c" in 401|400) ok "/api/ai/help $c (needs a login, as expected)";; *) bad "/api/ai/help $c - $(hint "$c")";; esac
 fi
 
 echo "Apps:"
-[ -n "${APPS// /}" ] || bad "no app hosts: add sites rows to tbrun/runtime-config.json"
+[ -n "${APPS// /}" ] || bad "no app hosts: set APP_*_HOST in tbapps.conf, then 03-config.sh apply"
 for h in $APPS; do
   u="https://$h"
   c=$(code "$u/"); [ "$c" = 200 ] || { bad "$h $c - $(hint "$c")"; continue; }
@@ -70,7 +71,7 @@ for h in $APPS; do
   problems=""
   [ "$rc" = yes ] || problems="$problems runtime-config.json not served;"
   case "$ai" in 401|400) ;; *) problems="$problems /ai/ answered $ai;";; esac
-  [ "$cors" = "$u" ] || problems="$problems add $u to CORS_ORIGINS in tbbe/.env.local;"
+  [ "$cors" = "$u" ] || problems="$problems Strapi does not allow $u (03-config.sh apply, then recreate tbbe);"
   if echo "$OFFLINE" | grep -qx "$h" && [ "$sw" != 1 ]; then problems="$problems offline host but sw.js is not the worker;"; fi
   [ -z "$problems" ] && ok "$msg" || bad "$msg -${problems}"
 done

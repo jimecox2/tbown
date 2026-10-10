@@ -1,7 +1,7 @@
 # Installation and Configuration of the Timebars System — Container Option
 
 > **Rehearsed end to end** on a test server (Ubuntu 26.04, Docker 29.8, October 2026). Since then every
-> stack is deployed the same way: settings in `.env.local`, the image tag in `.env`, `./deploy.sh` in each
+> stack is deployed the same way: one settings file `tbapps.conf`, the image tag in `.env`, `./deploy.sh` in each
 > folder, one Docker network `tbnet`. The images are generic — nothing about your server is built into them.
 
 ## Contents
@@ -44,13 +44,17 @@
 | File | What | Who writes it |
 |---|---|---|
 | `docker-compose.yml`, `.env.example`, `deploy.sh` | from this package | `00-push-to-server.sh` |
-| `.env.local` | your settings: passwords, keys and this server's addresses (`chmod 600`; edit with `nano`, section 7) | `03-generate-secrets.sh`, then you |
+| `.env.local` | this stack's settings (`chmod 600`) — **written for you**, never edited by hand | `03-config.sh apply` |
 | `.env` | one line: the image tag running now | `deploy.sh` |
-| `runtime-config.json` | `tbrun` only, instead of `.env.local`: the app's addresses (no secrets) | you |
+| `runtime-config.json` | `tbrun` only, instead of `.env.local`: the app's addresses (no secrets) | `03-config.sh apply` |
+
+**All your settings are in one file, `$TB/tbapps.conf`**: your addresses (typed once), the keys you paste,
+and the passwords generated on the server. `03-config.sh apply` writes every `.env.local` and
+`runtime-config.json` from it (section 7).
 
 To start or update a stack: `cd $TB/<stack> && ./deploy.sh` and type the tag from `VERSION.md`.
-To change a setting: edit `.env.local` (or `runtime-config.json`), then `docker compose up -d --force-recreate`.
-Images are never rebuilt for your server.
+To change a setting: edit `tbapps.conf`, then `bash $TB/scripts/03-config.sh apply` — it recreates the
+containers whose settings changed. Images are never rebuilt for your server.
 
 All containers share one Docker network, **`tbnet`**, and reach each other by name. Their ports are bound to
 the server itself (`127.0.0.1`) — nothing is reachable from the network until you publish it through the
@@ -71,7 +75,7 @@ Project data lives in each user's browser; the server holds accounts, licences a
  ~/tbown  (this package, your copy)            <parent>/tbApps = $TB
    docker/   scripts/   seed/      ── 00-push-to-server.sh ──►   $TB/postgres  tbbe  tbwww  tbhelp  tbrun  cloudflared
                                                $TB/scripts/   $TB/seed/
-                                               $TB/*/.env.local   ← created ON the server, never copied back
+                                               $TB/tbapps.conf   ← your settings; passwords generated ON the server
 ```
 
 The stack folders must be on the server because Docker runs there and reads them locally. Secrets
@@ -171,8 +175,8 @@ parent belongs to root, the script tells you the one `sudo` command to run on th
 
 It copies the stack folders, the scripts and the seed data, and sets **`TB`** to the tbApps folder in your
 `~/.bashrc` on the server — every command in this guide uses `$TB` (e.g. `cd $TB/tbbe`). Run it again
-whenever the package is updated: it never overwrites or deletes what belongs to the server (`.env.local`
-files, `runtime-config.json`, uploaded files). If the server is your workstation itself, use `local` as the
+whenever the package is updated: it never overwrites or deletes what belongs to the server (`tbapps.conf`,
+the `.env.local` files, `runtime-config.json`, uploaded files). If the server is your workstation itself, use `local` as the
 server name.
 
 All remaining steps run **on the server**. Open a session and stay in it:
@@ -227,37 +231,63 @@ belong to you, in `$TB`. If a script says it cannot use Docker, log out and back
 
 ```bash
 bash $TB/scripts/02-create-volumes.sh      # database volumes and the network tbnet
-bash $TB/scripts/03-generate-secrets.sh    # every .env.local, with new random passwords and keys
 ```
-`03-generate-secrets.sh` creates each stack's `.env.local` from its `.env.example` (`chmod 600`, never
-overwriting an existing one) and `tbrun/runtime-config.json` from its example. It generates every password
-and key that is made on the server, and lists the values still `CHANGE_ME` — those are yours:
 
-| File (on the server) | Set |
-|---|---|
-| `$TB/tbbe/.env.local` | `PUBLIC_URL` (your backend address), `CORS_ORIGINS` (your app, website and Cloud addresses); `SENDGRID_API_KEY` and `EMAIL_FROM` if you use email |
-| `$TB/tbwww/.env.local` | `NEXTAUTH_URL` (your website address), `CLOUD_API_URL`, `CLOUD_URL`, `RUN_URL_AB` / `TB` / `CB`; Stripe and `STRAPI_ADMIN_TOKEN` when you use them |
-| `$TB/tbhelp/.env.local` | `GEMINI_API_KEY` (13), `NEXTAUTH_URL` (your Cloud address), `CLOUD_API_URL`, `CLOUD_WWW_URL`, `RUN_URL_*` |
-| `$TB/tbrun/runtime-config.json` | your backend, website and Cloud addresses, one row per app hostname (14) |
-| `$TB/cloudflared/.env.local` | `TUNNEL_TOKEN` (section 8.1) |
+### 7.1 Make your settings file, `tbapps.conf`
 
-**Editing a settings file** — open it in an editor, as your own user (no `sudo`; the files are yours):
+Every setting of the installation is in **one plain-text file**. You type each address once; every other
+value (the URLs each container needs, Strapi's allowed origins, the app's `runtime-config.json`) is worked
+out from it.
+
+**a. Answer a few questions** — on your workstation (in your copy of the package) or on the server:
 ```bash
-nano $TB/tbbe/.env.local          # Ctrl+O, Enter to save; Ctrl+X to leave
-nano $TB/tbwww/.env.local
-nano $TB/tbhelp/.env.local
-nano $TB/tbrun/runtime-config.json
-nano $TB/cloudflared/.env.local   # not needed when this server keeps its own tunnel container
+bash scripts/03-config.sh new              # workstation: writes tbapps.conf in the package folder
+bash $TB/scripts/03-config.sh new          # or on the server: writes $TB/tbapps.conf
 ```
-Typing only the path (`$TB/tbbe/.env.local`) tries to *run* the file and answers *Permission denied* —
-that is not a permissions problem; put `nano` in front. The files are `chmod 600`: readable and writable
-by you, by nobody else, and never executable. If an editor cannot save one, the file was created with
-`sudo` at some point: fix it once with `sudo chown $USER: $TB/*/.env.local` and keep working without
-`sudo`.
+It asks your domain (e.g. `example.com`), an optional letter added to every name (`s` for a staging
+server: `agiles`, `be2s` …), proposes the six addresses — press Enter to accept each — and asks whether to
+add the short `ab` / `tb` / `cb` addresses as optional extras.
 
-Each file's comments say what goes where. `deploy.sh` refuses to start a stack while a value it needs is
-still `CHANGE_ME`. Store a copy of the `.env.local` files in your password manager or secrets vault — a
-restore needs them.
+**b. Paste your keys** into part 2 of the file, in any text editor: the tunnel token (section 8.1), your
+Gemini key (section 13), your SendGrid key. Leave empty what you do not use; `STRAPI_ADMIN_TOKEN` comes
+later (section 15).
+
+**c. Put it on the server** (only if you made it on the workstation) — open the file there and paste the
+whole text in one go:
+```bash
+nano $TB/tbapps.conf                       # paste, then Ctrl+O, Enter (save), Ctrl+X (leave)
+```
+
+**d. Apply it**:
+```bash
+bash $TB/scripts/03-config.sh apply
+```
+`apply` checks the file (hostnames only, no `https://`, no address used twice, emails look like emails),
+generates every password and key that is made on the server — the first time only, kept from then on —
+writes them into part 4 of `tbapps.conf`, and writes each stack's `.env.local` and
+`tbrun/runtime-config.json`. It lists what changed per stack and, if those containers are already
+running, offers to recreate them. `bash $TB/scripts/03-config.sh check` shows the same list without
+writing anything.
+
+The file has four parts:
+
+| Part | What | Who |
+|---|---|---|
+| 1. Your addresses | `APP_AB_HOST`, `APP_TB_HOST`, `APP_CB_HOST`, `APP_OFFLINE`, `EXTRA_APP_HOSTS` (e.g. `ab.example.com:AB tb.example.com:TB`), `BACKEND_HOST`, `WEBSITE_HOST`, `CLOUD_HOST`, `EMAIL_FROM` … | you (`new` fills them) |
+| 2. Keys you paste | `TUNNEL_TOKEN`, `GEMINI_API_KEY`, `SENDGRID_API_KEY`, `STRAPI_ADMIN_TOKEN`, Stripe, sign-in, notifications | you |
+| 3. Optional extras | any other setting for one stack, e.g. `TBHELP__AI_REQUIRE_LOGIN=false` | you, rarely |
+| 4. Made on the server | database passwords, Strapi secrets, sign-in secrets | `apply` — never edit |
+
+**Keep a copy of `tbapps.conf` in your password manager or secrets vault**: it holds every password of the
+installation, and a restore or a move to another server starts from it. It is `chmod 600`; edit it with
+`nano $TB/tbapps.conf` as your own user (no `sudo`). Typing only a file's path tries to *run* it and answers
+*Permission denied* — put `nano` in front.
+
+**A server set up before `tbapps.conf`** (settings in `.env.local` files): make the file from what is
+there, keeping every password, then check that nothing would change:
+```bash
+bash $TB/scripts/03-config.sh import && bash $TB/scripts/03-config.sh check
+```
 
 ## 8. Public addresses: DNS, HTTPS and the tunnel
 
@@ -270,8 +300,8 @@ offline mode).
 
 ### 8.1 Cloudflare Tunnel (no open ports)
 
-1. In Cloudflare Zero Trust → Networks → Tunnels, create a tunnel (one per server) and paste its token into
-   `$TB/cloudflared/.env.local` (`TUNNEL_TOKEN=...`).
+1. In Cloudflare Zero Trust → Networks → Tunnels, create a tunnel (one per server) and paste its token as
+   `TUNNEL_TOKEN=` in `tbapps.conf`, then `bash $TB/scripts/03-config.sh apply`.
 2. `cd $TB/cloudflared && ./deploy.sh` — it shows *Registered tunnel connection*, and the tunnel shows
    *Healthy* in the dashboard.
 3. Add one *published application* per hostname, service type **HTTP**, pointing at the **container
@@ -290,7 +320,7 @@ Keep *Rocket Loader* off and do not add *Cache Everything* rules for these hostn
 
 **Moving to another server** keeps every route: stop cloudflared on the old server
 (`cd $TB/cloudflared && docker compose down`), then put the same token in the new server's
-`.env.local` and `./deploy.sh`. Never run one token on two servers at once — Cloudflare would split
+`tbapps.conf`, `03-config.sh apply` and `./deploy.sh` in its cloudflared folder. Never run one token on two servers at once — Cloudflare would split
 visitors between them.
 
 ### 8.2 Your own DNS, reverse proxy and certificates
@@ -358,7 +388,7 @@ bash $TB/scripts/07-check-urls.sh       # the Strapi lines are OK now
 ```bash
 cd $TB/tbwww && ./deploy.sh          # Enter = the tag in VERSION.md
 ```
-Every address and key comes from `$TB/tbwww/.env.local` at run time. Sign-in with email and password
+Every address and key comes from `tbapps.conf` (written to `tbwww/.env.local`) at run time. Sign-in with email and password
 works against your backend. Google / GitHub / Facebook sign-in and payments stay off until you add their
 keys (*Administrators Guide*). The Personal and Enterprise dashboards are on Timebars Cloud (13); old
 `/dashboard` links on the website forward there.
@@ -371,32 +401,28 @@ are logged in to your Timebars Cloud (Strapi).
 
 1. Create a Gemini key in your own Google account (aistudio.google.com → *API keys*), restricted to the
    Generative Language API. Turn on billing and a budget alert if you expect more than the free tier.
-2. Put it, and your Cloud address, in the settings file (`chmod 600`, never copied back):
-```bash
-nano $TB/tbhelp/.env.local      # GEMINI_API_KEY, NEXTAUTH_URL; STRAPI_URL is already http://tbbe:1337/api
-```
+2. Put it in `tbapps.conf` as `GEMINI_API_KEY=` (if you did not already in section 7), then
+   `bash $TB/scripts/03-config.sh apply`.
 3. Deploy:
 ```bash
 cd $TB/tbhelp && ./deploy.sh
 ```
 It checks that the AI routes answer. The AI service needs **no public address of its own**: the browser
 calls the app's address and the app forwards `/ai/` to this container over `tbnet`. A site with no Strapi
-(no login) sets `AI_REQUIRE_LOGIN=false` in `.env.local` and keeps the server reachable from its own
-network only.
+(no login) adds `TBHELP__AI_REQUIRE_LOGIN=false` to `tbapps.conf` part 3, applies, and keeps the server
+reachable from its own network only.
 
 ## 14. The app
 
-One image serves every app hostname — with or without offline mode — and every customer; your addresses go in `runtime-config.json`:
+One image serves every app hostname — with or without offline mode — and every customer. Its addresses are
+in `tbrun/runtime-config.json`, written by `03-config.sh apply` from `tbapps.conf`:
 ```bash
-cd $TB/tbrun
-nano runtime-config.json        # your backend, website and Cloud, one row per app hostname
-./deploy.sh                     # Enter = the tag in VERSION.md
+cd $TB/tbrun && ./deploy.sh     # Enter = the tag in VERSION.md
 ```
-Each `sites` row maps a hostname to a product: `AB` Agilebars, `TB` Timebars, `CB` Costbars;
-`"offline": true` lets that address work offline. A hostname that is not listed gets no product.
-`aiBaseUrl` stays `/ai` (the app's own address, forwarded to `tbhelpapp`); change it only if you host the AI
-service somewhere else. After editing the file later: `docker compose up -d --force-recreate`, then reload
-the page twice.
+Each app address in `tbapps.conf` becomes a `sites` row that maps the hostname to its product (`AB`
+Agilebars, `TB` Timebars, `CB` Costbars); the three main ones work offline when `APP_OFFLINE=yes`, the
+`EXTRA_APP_HOSTS` ones never. A hostname that is not listed gets no product. After a change: edit
+`tbapps.conf`, apply, then reload the page twice.
 
 In Cloudflare, every app hostname points at `http://tbrun:80` (section 8.1); an old route to
 `tbrun-offline` answers 502.
@@ -408,12 +434,13 @@ Users & Roles) call Strapi with a server-side token.
 
 1. Open `https://<your backend address>/admin`, sign in, then Settings → API Tokens → **Create new API token**:
    name `<server>-server`, duration **Unlimited**, type **Full access**. Save and copy it.
-2. On the server — paste at the prompt; it is not shown or kept in the shell history:
+2. Paste it as `STRAPI_ADMIN_TOKEN=` in `tbapps.conf`, then apply and let it recreate `tbwwwp` and
+   `tbhelpapp`:
 ```bash
-read -rsp 'Token: ' T; echo; cd $TB && sed -i "s#^STRAPI_ADMIN_TOKEN=.*#STRAPI_ADMIN_TOKEN=$T#" tbwww/.env.local tbhelp/.env.local; unset T
-(cd tbwww && docker compose up -d --force-recreate) && (cd tbhelp && docker compose up -d --force-recreate)
+nano $TB/tbapps.conf
+bash $TB/scripts/03-config.sh apply
 ```
-This is how every setting changes: edit `.env.local`, recreate the container — no new image.
+This is how every setting changes: edit `tbapps.conf`, apply — no new image.
 
 ## 16. Check the installation
 
@@ -422,8 +449,7 @@ bash $TB/scripts/06-health-check.sh      # inside the server: every container, i
 bash $TB/scripts/07-check-urls.sh        # from outside: every public address, through the tunnel or proxy
 ```
 `06` compares each container's tag with `VERSION.md`. `07` reads your addresses from the settings files
-(`PUBLIC_URL`, both `NEXTAUTH_URL`s, the `sites` rows in `runtime-config.json`; add other app hostnames as
-arguments) and checks each page, the AI route, the offline worker, `runtime-config.json`, the dashboard
+(written from `tbapps.conf`: every app address including the extras, Strapi, the website and Cloud) and checks each page, the AI route, the offline worker, `runtime-config.json`, the dashboard
 redirect and Strapi's CORS answer for every app address. A FAIL line says what to fix (a missing route,
 a wrong container name, a missing CORS origin).
 
@@ -439,8 +465,7 @@ bash $TB/scripts/05-backup.sh           # try it once
 crontab -e                                   # then schedule it nightly:
 # 15 2 * * * /bin/bash $HOME/docker/scripts/05-backup.sh >> $HOME/backups/timebars/backup.log 2>&1
 ```
-Each backup holds the Strapi database, its uploads and every stack's `.env.local`, `.env` and
-`runtime-config.json` (the folder is private to your admin user). Copy `~/backups/timebars` off the server with your normal backup system, and practise a
+Each backup holds the Strapi database, its uploads, `tbapps.conf` and the files written from it (the folder is private to your admin user). Copy `~/backups/timebars` off the server with your normal backup system, and practise a
 restore.
 
 Users' own project data lives in their browsers: their backup files and synced spreadsheets go into
@@ -453,18 +478,21 @@ your document management system (see the *Data Synchronization, Backup, Recovery
 | This package | workstation: `git pull` (or new release), then `bash scripts/00-push-to-server.sh myserver` |
 | Any container | server: `cd $TB/<stack> && ./deploy.sh` and type the new tag from `VERSION.md`; back up first for `tbbe` |
 | Roll back | the same, with the previous tag (`deploy.sh` shows the one running now) |
-| A setting (address, key) | edit `.env.local` (or `tbrun/runtime-config.json`), then `docker compose up -d --force-recreate` in that folder |
+| A setting (address, key) | edit `tbapps.conf`, then `bash $TB/scripts/03-config.sh apply` (it recreates what changed) |
 | PostgreSQL major version | backup → new empty volume → `./deploy.sh` with the new major tag → restore (`deploy.sh` refuses a major change on a database with data) |
 | Ubuntu, firewall, SSH | your administrator, under your policies |
 
 **From an earlier copy of this package** (folders `tbrunoffline` and `tbwwwp`, settings in `.env`, networks
 `postgres_tbpg_net` and `tbhelp`): run `00-push-to-server.sh`, then on the server, for each old folder,
-`docker compose down`; move each stack's settings into `.env.local` (`mv .env .env.local`, then compare with
-the new `.env.example`; for tbwww start from the new example — its variable names changed); copy
-`tbrunoffline/runtime-config.json` to `tbrun/`; then `bash $TB/scripts/02-create-volumes.sh` and
-`./deploy.sh` in each stack, database first. Delete the old folders and networks
-(`docker network rm postgres_tbpg_net tbhelp`) once everything is green. Change the tunnel routes to
-`http://tbrun:80` for the app hostnames.
+`docker compose down`; make `tbapps.conf` with `03-config.sh new`, and copy the database passwords and
+Strapi secrets from the old `postgres/.env` and `tbbe/.env` into its part 4 (`POSTGRES_PASSWORD`,
+`STRAPI_DB_PASSWORD`, `APP_KEYS`, `API_TOKEN_SALT`, `ADMIN_JWT_SECRET`, `TRANSFER_TOKEN_SALT`, `JWT_SECRET`)
+before the first `apply`; then `bash $TB/scripts/02-create-volumes.sh` and `./deploy.sh` in each stack,
+database first. Delete the old folders and networks (`docker network rm postgres_tbpg_net tbhelp`) once
+everything is green. Change the tunnel routes to `http://tbrun:80` for the app hostnames.
+
+**From the first `tbApps` layout** (settings typed into each `.env.local`): `bash $TB/scripts/03-config.sh
+import`, then `check` — it should show no changes. From then on edit `tbapps.conf` only.
 
 ## 19. Troubleshooting
 
@@ -475,22 +503,23 @@ the new `.env.example`; for tbwww start from the new example — its variable na
 | `apt`: *Temporary failure resolving* | the server has no DNS — your administrator sets gateway and DNS servers |
 | `permission denied ... docker.sock` | log out and back in after section 6 |
 | Docker install says *Cannot reach download.docker.com* | the server has no internet access to Docker (proxy, firewall); fix it and run the script again |
-| Strapi cannot reach the database | `DATABASE_*` in `tbbe/.env.local` must match `STRAPI_DB_*` in `postgres/.env.local` |
+| Strapi cannot reach the database | the database was made with other passwords than `tbapps.conf` part 4 holds — restore the old `tbapps.conf` from your vault or backup, apply |
 | AI answers *502* | `tbhelpapp` is not running, or it or `tbrun` is not on network `tbnet` — `docker network inspect tbnet` lists both; `./deploy.sh` in `tbhelp`, then in `tbrun` |
-| AI answers *503* "Could not check your login right now" | `tbhelpapp` cannot reach Strapi — `STRAPI_URL` in `tbhelp/.env.local` is wrong (it should be `http://tbbe:1337/api`) or `tbbe` is down; test: `docker exec tbhelpapp wget -S -O- http://tbbe:1337/api/users/me` answers 401/403 when healthy |
-| AI answers *401* | the user is not signed in, the login expired, or `STRAPI_URL` in `tbhelp/.env.local` is wrong |
-| AI answers an error naming `GEMINI_API_KEY` | the key is missing in `tbhelp/.env.local`; add it and `docker compose up -d --force-recreate` |
-| App address shows the wrong product or none | add the hostname to `runtime-config.json`, `docker compose up -d --force-recreate` in `tbrun`, then reload twice |
-| Login fails from a new address | the address is missing from `CORS_ORIGINS` in `tbbe/.env.local`; add it and `docker compose up -d --force-recreate` |
+| AI answers *503* "Could not check your login right now" | `tbhelpapp` cannot reach Strapi — `tbbe` is down, or a `TBHELP__STRAPI_URL` line in `tbapps.conf` overrides the right value (`http://tbbe:1337/api`); test: `docker exec tbhelpapp wget -S -O- http://tbbe:1337/api/users/me` answers 401/403 when healthy |
+| AI answers *401* | the user is not signed in, or the login expired |
+| AI answers an error naming `GEMINI_API_KEY` | add `GEMINI_API_KEY=` to `tbapps.conf`, apply |
+| App address shows the wrong product or none | add the hostname to `tbapps.conf` (part 1), apply, then reload twice |
+| Login fails from a new address | the address is not in `tbapps.conf` (Strapi only accepts addresses listed there, plus `EXTRA_CORS_ORIGINS`); add it, apply |
 | No service worker | not HTTPS, the address lacks `"offline": true`, or `runtime-config.json` is not served |
 | `07-check-urls.sh`: 530 for an address | no published application for that hostname on the running tunnel — add it (section 8.1) |
 | `07-check-urls.sh`: 502 for an address | the route names the wrong container or port, or the container is down (`06-health-check.sh`) |
 | `docker logs cloudflared`: *lookup tbwwwp on 127.0.0.11:53: server misbehaving* (browser: Cloudflare 502) | that container is not running, or not on `tbnet` — `./deploy.sh` in its stack; the tunnel route needs no change |
 | Published application with `localhost:8687` does not work | inside the cloudflared container `localhost` is cloudflared itself — use the container name (`tbrun:80`, `tbbe:1337`, `tbwwwp:3001`, `tbhelpapp:3010`) |
-| `bash: $TB/.../.env.local: Permission denied` | you typed the file's path as a command; open it with `nano $TB/.../.env.local` (section 7) |
-| An editor cannot save a `.env.local` | it was created with `sudo`: `sudo chown $USER: $TB/*/.env.local` once, then no `sudo` again |
-| `deploy.sh`: *Not set in .env.local: ...* | fill in those values (the file's comments say what goes there) and run it again |
-| `docker compose`: *env file .env.local not found* | run `03-generate-secrets.sh`, or `cp .env.example .env.local` and fill it in |
+| `bash: $TB/tbapps.conf: Permission denied` | you typed the file's path as a command; open it with `nano $TB/tbapps.conf` (section 7.1) |
+| An editor cannot save `tbapps.conf` | it was created with `sudo`: `sudo chown $USER: $TB/tbapps.conf $TB/*/.env.local` once, then no `sudo` again |
+| `deploy.sh`: *Not set: ...* | add those values to `tbapps.conf`, then `03-config.sh apply` |
+| `docker compose`: *env file .env.local not found* | `bash $TB/scripts/03-config.sh apply` (section 7.1) |
+| `03-config.sh apply`: *Stopped: the database already exists* | `tbapps.conf` would change the database passwords — put the old part 4 back (from your vault, or `03-config.sh import` into another file) |
 
 For help, send the output of `bash $TB/scripts/06-health-check.sh` and
-`docker logs --tail 100 <container>` — never send `.env.local` files, tokens or passwords.
+`docker logs --tail 100 <container>` — never send `tbapps.conf`, `.env.local` files, tokens or passwords.

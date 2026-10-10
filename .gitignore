@@ -10,3 +10,5 @@ backups/
 *.dump
 !seed/*.dump
 .push-targets
+tbapps*.conf
+__pycache__/

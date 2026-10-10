@@ -29,7 +29,7 @@ docker info >/dev/null 2>&1 || die "Cannot use Docker as $USER (id -nG must list
 # --- 2. settings ------------------------------------------------------------------------------
 if [ "${STACK_NO_ENV_LOCAL:-}" != 1 ]; then
   if [ ! -f .env.local ]; then
-    die "Missing .env.local: run ../scripts/03-generate-secrets.sh, or cp .env.example .env.local, fill it in and chmod 600 .env.local"
+    die "Missing .env.local: write it from tbapps.conf with   bash ../scripts/03-config.sh apply   (guide section 7)"
   fi
   if [ "$(stat -c %a .env.local)" != 600 ]; then chmod 600 .env.local && echo "Set .env.local to chmod 600."; fi
   missing=""
@@ -37,7 +37,7 @@ if [ "${STACK_NO_ENV_LOCAL:-}" != 1 ]; then
     val=$(grep -E "^$v=" .env.local | tail -1 | cut -d= -f2-)
     { [ -z "$val" ] || [ "$val" = CHANGE_ME ]; } && missing="$missing $v"
   done
-  [ -z "$missing" ] || die "Not set in .env.local:$missing  (see the comments in .env.example)"
+  [ -z "$missing" ] || die "Not set:$missing - add it to tbapps.conf (nano ../tbapps.conf), then: bash ../scripts/03-config.sh apply"
 fi
 if declare -F stack_check >/dev/null; then stack_check || exit 1; fi
 
