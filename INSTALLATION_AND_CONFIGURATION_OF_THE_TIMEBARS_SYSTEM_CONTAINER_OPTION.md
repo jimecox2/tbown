@@ -86,16 +86,77 @@ are generated on the server and never leave it — not to your workstation, not 
 | Item | Notes |
 |---|---|
 | Admin workstation on the same network | Linux, macOS, or Windows with OpenSSH; `git` or a release download of this package; `rsync` |
-| Your hostnames | one per product you use (e.g. `pmrm.example.com`), plus the backend (`be2.example.com`) and website (`www.example.com`) |
+| Your hostnames | one per product (e.g. `pmrm.example.com`), plus the backend, the website and Timebars Cloud — section 2.1 |
 | DNS and HTTPS | **your responsibility** — a Cloudflare account with your domain (section 8.1), or your own DNS, reverse proxy and certificates (section 8.2) |
 | Docker Hub access | a Docker Hub account with pull access granted by Timebars Ltd., and a read-only access token |
-| Optional services | SendGrid key (registration email), Pushover / Twilio (notifications) — see the *Administrators Guide* |
+| Your keys | a Cloudflare tunnel token, a Google Gemini key, a SendGrid key; Stripe keys only if you sell licences — section 2.1 says where to get each |
 
 On your workstation:
 ```bash
 git clone https://github.com/jimecox2/tbown.git ~/tbown      # or unpack a release download to ~/tbown
 cd ~/tbown
 ```
+
+### 2.1 The settings you will need — read this before you start
+
+Every setting lives in one file, `tbapps.conf` (section 7.1). `03-config.sh new` writes it for you from your
+domain; you then paste a few keys. This section says what each setting is, why it is needed and where to
+get it, so you can collect them before the installation day.
+
+**Part 1 — your addresses (`03-config.sh new` proposes them; hostnames only: no `https://`, no `/`)**
+
+| Setting | Example | What it is |
+|---|---|---|
+| `APP_AB_HOST`, `APP_TB_HOST`, `APP_CB_HOST` | `agile.example.com`, `pmrm…`, `ppm…` | the addresses users open for Agilebars, Timebars and Costbars |
+| `APP_OFFLINE` | `yes` | `yes` = those three keep working without a network after the first visit (needs HTTPS) |
+| `EXTRA_APP_HOSTS` | `ab.example.com:AB tb.example.com:TB` | optional extra app addresses, without offline mode |
+| `BACKEND_HOST` | `be2.example.com` | Strapi: logins, licences, publishing. Its admin page is `https://<this>/admin` |
+| `WEBSITE_HOST` | `www.example.com` | the website: sales, sign-up, profile, orders |
+| `CLOUD_HOST` | `cloud.example.com` | Timebars Cloud: dashboards, notifications, AI help |
+| `EMAIL_FROM` | `noreply@example.com` | the sender of registration and password emails — must be a sender verified in SendGrid |
+
+Every address needs a DNS name pointing at this server — a Cloudflare published application (section 8.1)
+or a record on your own DNS and proxy (section 8.2). `apply` works out everything that depends on them: the
+URLs each container uses, the list of browser addresses Strapi accepts (CORS) and the app's site list.
+
+**Part 2 — keys you get and paste**
+
+| Setting | Needed for | Where to get it |
+|---|---|---|
+| `TUNNEL_TOKEN` | public HTTPS addresses through Cloudflare (no open ports) | [one.dash.cloudflare.com](https://one.dash.cloudflare.com) → *Networks* → *Tunnels* → **Create a tunnel** → *Cloudflared* → name it after the server → *Choose your environment*: **Docker**. The page shows `docker run cloudflare/cloudflared:latest tunnel --no-autoupdate run --token eyJh…` — copy only the long value after `--token` (it starts with `eyJ`). For an existing tunnel: *Tunnels* → the tunnel → *Configure* shows the same command. One tunnel and token per server. Leave empty if you use your own reverse proxy (section 8.2) |
+| `GEMINI_API_KEY` | Ask AI, AI Create, the help assistant | [aistudio.google.com](https://aistudio.google.com) → **Get API key** → *Create API key* (in a Google Cloud project you own) → copy it (starts with `AIza`). In the Google Cloud console restrict the key to the *Generative Language API*, and add billing with a budget alert if you expect more than the free tier. Empty = AI features off |
+| `SENDGRID_API_KEY` | registration confirmation and password-reset emails, sent by Strapi | [twilio.com/en-us/sendgrid](https://www.twilio.com/en-us/sendgrid) → sign up → *Settings* → *Sender Authentication*: verify your `EMAIL_FROM` address (single sender) or your whole domain → *Settings* → *API Keys* → **Create API Key**, *Restricted Access* with **Mail Send** → copy it (starts with `SG.`; shown only once). Empty = no email |
+| `STRAPI_ADMIN_TOKEN` | the website (confirming Google / GitHub sign-ups) and Cloud (dashboard sources, Users & Roles) | made **after** Strapi is running: `https://<BACKEND_HOST>/admin` → *Settings* → *API Tokens* → **Create new API token**, *Full access*, *Unlimited* (section 15). Empty until then |
+| `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` | only if you sell licences on the website (checkout) | [dashboard.stripe.com](https://dashboard.stripe.com) → *Developers* → *API keys*. For a test or staging server switch to the **sandbox** first (top left) and use `sk_test_…` / `pk_test_…`; for production leave the sandbox and use `sk_live_…` / `pk_live_…`. Leave both empty if you do not sell |
+
+**Part 4 — made on the server by `apply` (you do nothing, but know what they are)**
+
+| Setting | What it protects | If it changes later |
+|---|---|---|
+| `POSTGRES_PASSWORD` | the database administrator login (admin use only) | — |
+| `STRAPI_DB_NAME`, `STRAPI_DB_USER`, `STRAPI_DB_PASSWORD` | Strapi's own database and login, created on the first database start | Strapi can no longer open its database — **never change after the first start** |
+| `APP_KEYS` | signs Strapi's session cookies (four values) | users are signed out once |
+| `ADMIN_JWT_SECRET` | signs Strapi admin-panel logins | admins are signed out once |
+| `JWT_SECRET` | signs the logins of app and website users | every user is signed out once |
+| `API_TOKEN_SALT` | protects Strapi API tokens | every API token (e.g. `STRAPI_ADMIN_TOKEN`) stops working — make new ones |
+| `TRANSFER_TOKEN_SALT` | protects Strapi data-transfer tokens | transfer tokens stop working |
+| `WWW_NEXTAUTH_SECRET`, `CLOUD_NEXTAUTH_SECRET` | sign the website's and Cloud's session cookies | users of that site are signed out once |
+| `PGADMIN_DEFAULT_PASSWORD` | the optional pgAdmin page | — |
+
+`apply` makes each one once with a strong random value and never changes it. To make one by hand (for
+example to move an existing server's value in): `openssl rand -base64 32`. When you move an installation to
+a new server, bring its `tbapps.conf` along — the same part 4 keeps every login and token working.
+
+**Coming from an older Timebars server `.env`?** These names changed or are no longer used:
+
+| Old name | Now |
+|---|---|
+| `BE_URL`, `FE_URL` | `BACKEND_HOST`, `WEBSITE_HOST` (part 1, hostnames only) |
+| `FULL_ACCESS_ADMIN_TOKEN` | `STRAPI_ADMIN_TOKEN` (part 2) — used by the website and Cloud, not by Strapi |
+| `STRIPE_PK` | not read by Strapi; Stripe keys are the website's (`STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`) |
+| `DATABASE_HOST`, `DATABASE_PORT` | fixed inside the installation (`tbpgdb`, `5432`) |
+| `DATABASE_NAME`, `DATABASE_USERNAME`, `DATABASE_PASSWORD` | `STRAPI_DB_NAME`, `STRAPI_DB_USER`, `STRAPI_DB_PASSWORD` (part 4; a restored backup is loaded into them, whatever names the old server used) |
+| `API_TOKEN_SALT`, `TRANSFER_TOKEN_SALT`, `ADMIN_JWT_SECRET`, `JWT_SECRET`, `APP_KEYS` | the same names, part 4 — copy the old values in before the first `apply` to keep existing logins and tokens |
 
 ## 3. Getting into the server from your workstation
 
@@ -246,7 +307,8 @@ bash $TB/scripts/03-config.sh new          # or on the server: writes $TB/tbapps
 ```
 It asks your domain (e.g. `example.com`), an optional letter added to every name (`s` for a staging
 server: `agiles`, `be2s` …), proposes the six addresses — press Enter to accept each — and asks whether to
-add the short `ab` / `tb` / `cb` addresses as optional extras.
+add the short `ab` / `tb` / `cb` addresses as optional extras. Run it again later to change the addresses: it keeps
+part 2 (your keys), part 3 and part 4 (the passwords), and saves the old file next to it.
 
 **b. Paste your keys** into part 2 of the file, in any text editor: the tunnel token (section 8.1), your
 Gemini key (section 13), your SendGrid key. Leave empty what you do not use; `STRAPI_ADMIN_TOKEN` comes
@@ -274,7 +336,7 @@ The file has four parts:
 | Part | What | Who |
 |---|---|---|
 | 1. Your addresses | `APP_AB_HOST`, `APP_TB_HOST`, `APP_CB_HOST`, `APP_OFFLINE`, `EXTRA_APP_HOSTS` (e.g. `ab.example.com:AB tb.example.com:TB`), `BACKEND_HOST`, `WEBSITE_HOST`, `CLOUD_HOST`, `EMAIL_FROM` … | you (`new` fills them) |
-| 2. Keys you paste | `TUNNEL_TOKEN`, `GEMINI_API_KEY`, `SENDGRID_API_KEY`, `STRAPI_ADMIN_TOKEN`, Stripe, sign-in, notifications | you |
+| 2. Keys you paste | `TUNNEL_TOKEN`, `GEMINI_API_KEY`, `SENDGRID_API_KEY`, `STRAPI_ADMIN_TOKEN`, Stripe (section 2.1) | you |
 | 3. Optional extras | any other setting for one stack, e.g. `TBHELP__AI_REQUIRE_LOGIN=false` | you, rarely |
 | 4. Made on the server | database passwords, Strapi secrets, sign-in secrets | `apply` — never edit |
 
@@ -520,6 +582,7 @@ import`, then `check` — it should show no changes. From then on edit `tbapps.c
 | An editor cannot save `tbapps.conf` | it was created with `sudo`: `sudo chown $USER: $TB/tbapps.conf $TB/*/.env.local` once, then no `sudo` again |
 | `deploy.sh`: *Not set: ...* | add those values to `tbapps.conf`, then `03-config.sh apply` |
 | `docker compose`: *env file .env.local not found* | `bash $TB/scripts/03-config.sh apply` (section 7.1) |
+| Strapi admin login fails with the right page shown | wrong email or password for the account in the restored data — list the admin accounts: `docker exec tbpgdb psql -U strapi -d strapi -Atc "select email, is_active, blocked from admin_users"`, and reset a password with `docker exec -it tbbe strapi admin:reset-user-password` (it asks for the email and the new password). After 5 failed tries Strapi refuses every login for that email for 5 minutes — wait before trying again |
 | `03-config.sh apply`: *Stopped: the database already exists* | `tbapps.conf` would change the database passwords — put the old part 4 back (from your vault, or `03-config.sh import` into another file) |
 
 For help, send the output of `bash $TB/scripts/06-health-check.sh` and

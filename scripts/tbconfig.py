@@ -49,25 +49,12 @@ PART1 = [  # key, default, comment
     ("OP_URL", "", "optional: your OpenProject address, e.g. https://op.example.com"),
 ]
 PART2 = [  # key, comment
-    ("TUNNEL_TOKEN", "Cloudflare Zero Trust -> Networks -> Tunnels -> this server's tunnel -> install connector -> token. Empty if you use your own proxy or another tunnel container."),
-    ("GEMINI_API_KEY", "aistudio.google.com -> API keys (restricted to the Generative Language API). Empty = AI features off."),
-    ("SENDGRID_API_KEY", "app.sendgrid.com -> Settings -> API Keys, starts with SG. Empty = no email."),
-    ("STRAPI_ADMIN_TOKEN", "Strapi admin -> Settings -> API Tokens -> Full access, Unlimited. Made after Strapi is up (guide section 15)."),
-    ("STRIPE_SECRET_KEY", "optional: payments on the website (test keys on test servers)"),
-    ("STRIPE_PUBLISHABLE_KEY", "optional: the matching publishable key"),
-    ("AUTH_GOOGLE_ID", "optional: Google sign-in (callback: https://<website>/api/auth/callback/google and the same on Cloud)"),
-    ("AUTH_GOOGLE_SECRET", ""),
-    ("AUTH_GITHUB_ID", "optional: GitHub sign-in"),
-    ("AUTH_GITHUB_SECRET", ""),
-    ("FACEBOOK_CLIENT_ID", "optional: Facebook sign-in"),
-    ("FACEBOOK_CLIENT_SECRET", ""),
-    ("NOTIFICATION_STRAPI_KEY", "optional: notifications (Timebars Cloud)"),
-    ("SYSTEM_ADMIN_EMAIL", "optional: who gets system notifications"),
-    ("PUSHOVER_APP_TOKEN", "optional: push notifications"),
-    ("PUSHOVER_USER_KEY", ""),
-    ("TWILIO_ACCOUNT_SID", "optional: SMS"),
-    ("TWILIO_AUTH_TOKEN", ""),
-    ("TWILIO_PHONE_NUMBER", ""),
+    ("TUNNEL_TOKEN", "Cloudflare tunnel token for THIS server (guide section 2.1). Empty if you use your own proxy or an existing tunnel container."),
+    ("GEMINI_API_KEY", "Google Gemini key for Ask AI and AI Create (guide section 2.1). Empty = AI features off."),
+    ("SENDGRID_API_KEY", "SendGrid key, starts with SG. - registration and password emails (guide section 2.1). Empty = no email."),
+    ("STRAPI_ADMIN_TOKEN", "Strapi API token, Full access - made AFTER Strapi is up (guide section 15). Empty until then."),
+    ("STRIPE_SECRET_KEY", "optional, only if you sell licences on the website: Stripe secret key, sk_test_... or sk_live_..."),
+    ("STRIPE_PUBLISHABLE_KEY", "optional, with the one above: Stripe publishable key, pk_test_... or pk_live_..."),
 ]
 PART3_FIXED = [("POSTGRES_USER", "pgsuper"), ("STRAPI_DB_NAME", "strapi"), ("STRAPI_DB_USER", "strapi"),
                ("PGADMIN_DEFAULT_EMAIL", "admin@example.com")]
@@ -219,7 +206,7 @@ def check(c):
         m = EXTRA_RE.match(k)
         if m:
             v["_stack_extra"].setdefault(m.group(1).lower(), []).append((m.group(2), val.strip()))
-        elif k not in ALL_KEYS:
+        elif k not in ALL_KEYS and val.strip():
             warns.append(f"{k} is not a known setting - ignored (for one stack write e.g. TBHELP__{k})")
     for h, keys in hosts.items():
         if len(keys) > 1:
@@ -228,7 +215,7 @@ def check(c):
     if off not in ("yes", "no"):
         errs.append("APP_OFFLINE must be yes or no")
     v["APP_OFFLINE"] = off
-    for k in ("EMAIL_FROM", "EMAIL_REPLY_TO", "SYSTEM_ADMIN_EMAIL"):
+    for k in ("EMAIL_FROM", "EMAIL_REPLY_TO"):
         if v[k] and not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", v[k]):
             errs.append(f"{k}: '{v[k]}' is not an email address")
     if v["OP_URL"] and not v["OP_URL"].startswith("http"):
@@ -256,15 +243,13 @@ def render(v):
     https = lambda h: f"https://{h}"
     be, www, cloud = https(v["BACKEND_HOST"]), https(v["WEBSITE_HOST"]), https(v["CLOUD_HOST"])
     run = {"AB": https(v["APP_AB_HOST"]), "TB": https(v["APP_TB_HOST"]), "CB": https(v["APP_CB_HOST"])}
-    origins = [run["AB"], run["TB"], run["CB"]] + [https(h) for h, _ in v["_extras"]] + [www, cloud]
+    origins = [run["AB"], run["TB"], run["CB"]] + [https(h) for h, _ in v["_extras"]] + [www, cloud, be]
     origins += [o.strip() for o in v["EXTRA_CORS_ORIGINS"].split(",") if o.strip()]
     seen, cors = set(), []
     for o in origins:
         if o not in seen:
             seen.add(o)
             cors.append(o)
-    oauth = [(k, v[k]) for k in ("AUTH_GOOGLE_ID", "AUTH_GOOGLE_SECRET", "AUTH_GITHUB_ID", "AUTH_GITHUB_SECRET",
-                                 "FACEBOOK_CLIENT_ID", "FACEBOOK_CLIENT_SECRET")]
     out = {
         "postgres": [("POSTGRES_USER", v["POSTGRES_USER"]), ("POSTGRES_PASSWORD", v["POSTGRES_PASSWORD"]),
                      ("POSTGRES_DB", "postgres"), ("STRAPI_DB_NAME", v["STRAPI_DB_NAME"]),
@@ -278,18 +263,14 @@ def render(v):
                  ("JWT_SECRET", v["JWT_SECRET"]), ("HOST", "0.0.0.0"), ("PORT", "1337"), ("PUBLIC_URL", be),
                  ("CORS_ORIGINS", ",".join(cors)), ("SENDGRID_API_KEY", v["SENDGRID_API_KEY"]),
                  ("EMAIL_FROM", v["EMAIL_FROM"]), ("EMAIL_REPLY_TO", v["EMAIL_REPLY_TO"] or v["EMAIL_FROM"])],
-        "tbwww": [("NEXTAUTH_SECRET", v["WWW_NEXTAUTH_SECRET"]), ("NEXTAUTH_URL", www)] + oauth + [
+        "tbwww": [("NEXTAUTH_SECRET", v["WWW_NEXTAUTH_SECRET"]), ("NEXTAUTH_URL", www),
                   ("STRAPI_ADMIN_TOKEN", v["STRAPI_ADMIN_TOKEN"]), ("STRIPE_SECRET_KEY", v["STRIPE_SECRET_KEY"]),
                   ("STRIPE_PUBLISHABLE_KEY", v["STRIPE_PUBLISHABLE_KEY"]), ("CLOUD_API_URL", f"{be}/api"),
                   ("CLOUD_URL", cloud), ("RUN_URL_AB", run["AB"]), ("RUN_URL_TB", run["TB"]), ("RUN_URL_CB", run["CB"])],
         "tbhelp": [("GEMINI_API_KEY", v["GEMINI_API_KEY"]), ("STRAPI_URL", "http://tbbe:1337/api"),
-                   ("NEXTAUTH_SECRET", v["CLOUD_NEXTAUTH_SECRET"]), ("NEXTAUTH_URL", cloud)] + oauth + [
+                   ("NEXTAUTH_SECRET", v["CLOUD_NEXTAUTH_SECRET"]), ("NEXTAUTH_URL", cloud),
                    ("CLOUD_API_URL", f"{be}/api"), ("CLOUD_WWW_URL", www), ("RUN_URL_AB", run["AB"]),
-                   ("RUN_URL_TB", run["TB"]), ("RUN_URL_CB", run["CB"]), ("STRAPI_ADMIN_TOKEN", v["STRAPI_ADMIN_TOKEN"]),
-                   ("NOTIFICATION_STRAPI_KEY", v["NOTIFICATION_STRAPI_KEY"]), ("SYSTEM_ADMIN_EMAIL", v["SYSTEM_ADMIN_EMAIL"]),
-                   ("PUSHOVER_APP_TOKEN", v["PUSHOVER_APP_TOKEN"]), ("PUSHOVER_USER_KEY", v["PUSHOVER_USER_KEY"]),
-                   ("TWILIO_ACCOUNT_SID", v["TWILIO_ACCOUNT_SID"]), ("TWILIO_AUTH_TOKEN", v["TWILIO_AUTH_TOKEN"]),
-                   ("TWILIO_PHONE_NUMBER", v["TWILIO_PHONE_NUMBER"])],
+                   ("RUN_URL_TB", run["TB"]), ("RUN_URL_CB", run["CB"]), ("STRAPI_ADMIN_TOKEN", v["STRAPI_ADMIN_TOKEN"])],
         "cloudflared": [("TUNNEL_TOKEN", v["TUNNEL_TOKEN"])],
     }
     for stack, pairs in v.get("_stack_extra", {}).items():
@@ -346,9 +327,22 @@ def postgres_initialised():
 # Commands
 # ---------------------------------------------------------------------------------------------------
 def cmd_new(path):
+    keep = {}
     if os.path.exists(path):
-        say(f"{path} already exists - edit it (nano {path}), or give another file name: 03-config.sh new <file>")
-        return 1
+        old = read_kv(path)
+        keep = {k: old[k] for k in [k for k, _ in PART3_FIXED] + PART3_SECRETS if old.get(k)}
+        keep.update({k: old[k] for k, _ in PART2 if old.get(k)})
+        keep.update({k: val for k, val in old.items() if EXTRA_RE.match(k)})
+        say(f"{path} already exists.")
+        say("Starting again keeps its passwords made on the server (part 4), your pasted keys (part 2) and part 3;")
+        say("you answer the address questions again. The old file is saved next to it.")
+        if not yes("Start again"):
+            say(f"Nothing changed. To edit it instead: nano {path}")
+            return 1
+        import time
+        bak = f"{path}.{time.strftime('%Y%m%d-%H%M%S')}"
+        os.rename(path, bak)
+        say(f"Saved the old file as {bak}\n")
     say("New tbapps.conf: the addresses users will open. Press Enter to accept a suggestion.\n")
     domain = ask("Your domain, e.g. example.com").lower().strip().strip(".")
     domain = clean_host(domain)
@@ -374,10 +368,11 @@ def cmd_new(path):
     v["EXTRA_CORS_ORIGINS"] = "https://checkout.stripe.com,http://localhost:*"
     for k, val in PART3_FIXED:
         v[k] = val
+    v.update(keep)
     write_private(path, conf_text(v))
     say(f"\nWritten: {path}")
     say("Next:")
-    say("  1. Open it in any text editor and paste your keys in part 2 (Gemini, SendGrid, tunnel token ...).")
+    say("  1. Open it in any text editor and paste your keys in part 2 (Gemini, SendGrid, tunnel token ...)" + (" - kept from before." if keep else "."))
     if ON_SERVER:
         say("  2. bash $TB/scripts/03-config.sh apply")
     else:
