@@ -233,6 +233,26 @@ row has a check you can run from your workstation.
 > all addresses is reachable from the network **even when the host firewall denies it**. A network
 > firewall in front of the server needs no inbound rule except SSH (and 80/443 for your own proxy).
 
+### 4.9 A new cloud server (DigitalOcean or similar) in one step
+
+No administrator, and a fresh Ubuntu 24.04 / 26.04 server you reach as `root` with your SSH key
+(DigitalOcean: choose *SSH Key* authentication and add your workstation's `~/.ssh/id_ed25519.pub` when you
+create the droplet; 4 GB RAM / 2 CPUs or more). `00-prep-new-server.sh` brings it to the end state above:
+updates and automatic security updates, the tools in 4.7, an admin user with `sudo` and your key, SSH with
+keys only and no root login, the firewall allowing SSH only, time sync and swap. From your workstation, in
+the package folder:
+
+```bash
+scp scripts/00-prep-new-server.sh root@<IP>:
+ssh -t root@<IP> bash 00-prep-new-server.sh jcox --ssh-from <your public IP>    # admin user name of your choice
+```
+It asks a password for the admin user — for `sudo` only, SSH never accepts it; keep it in your vault.
+Leave out `--ssh-from` if your own address changes; then SSH is open to everyone, keys only. Add
+`--key "$(cat ~/.ssh/id_ed25519.pub)"` if root has no key on the server. At the end it prints the
+`~/.ssh/config` block for section 3: add it, and **before closing the root session** test from a new
+terminal: `ssh <server> 'hostname; sudo -v && echo sudo ok'`. Reboot if it says so. Your usual
+hardening (fail2ban, DigitalOcean Cloud Firewall, monitoring) goes on top; then continue with section 5.
+
 ## 5. Send the package to the server
 
 Decide where Timebars goes on the server: the **parent folder** where you keep Docker apps, given as a
