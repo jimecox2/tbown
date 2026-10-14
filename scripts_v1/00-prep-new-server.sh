@@ -18,6 +18,16 @@
 #   - firewall (ufw): SSH in (from --ssh-from only, if given), 80/443 with --web, everything else in denied
 #   - time sync on; swap file on a server with less than 8 GB RAM and no swap
 # It does not install Docker: that is guide section 6 (01-install-docker.sh).
+#
+# What you will see (a few minutes):
+#   - apt output for the updates, then "info: Adding new user `<admin user>' ..." lines from adduser
+#   - "Choose a password for <admin user>" and New password / Retype new password: that password is for
+#     sudo only (SSH never accepts it). Keep it in your vault. On a second run it is not asked again.
+#   - "== 3. SSH keys ... has N key(s)", "== 4. SSH ...", "== 5. Firewall" (the ufw rules), "== 6. Time and swap"
+#   - "Done: ..." and the ~/.ssh/config block for your workstation. If it says a reboot is needed: reboot.
+# Then, BEFORE closing the root session, test from a new terminal: ssh <server> 'hostname; sudo -v && echo sudo ok'
+# Safe to run again: an existing user, password and keys are kept. If it stopped with an ERROR, fix that
+# and run the same command again - it carries on from where it is.
 # Your organisation's further hardening (fail2ban, auditd, CIS rules ...) goes on top as usual.
 set -euo pipefail
 die() { echo "ERROR: $*" >&2; exit 1; }
@@ -89,8 +99,15 @@ PubkeyAuthentication yes
 MaxAuthTries 4
 AllowUsers $ADMIN
 CFG
+# Ubuntu 24.04+ starts sshd per connection (ssh.socket): /run/sshd exists only while it runs, and sshd -t
+# stops with "Missing privilege separation directory: /run/sshd" without it.
+install -d -m 755 /run/sshd
 sshd -t || { rm -f /etc/ssh/sshd_config.d/00-timebars.conf; die "the SSH settings did not pass sshd -t - removed them, SSH unchanged"; }
-systemctl reload ssh 2>/dev/null || systemctl restart ssh
+if systemctl is-active --quiet ssh.socket; then
+  echo "SSH runs per connection (ssh.socket): the new settings apply to the next login."
+else
+  systemctl reload ssh 2>/dev/null || systemctl restart ssh
+fi
 
 echo "== 5. Firewall"
 ufw default deny incoming >/dev/null
