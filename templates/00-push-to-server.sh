@@ -3,9 +3,10 @@
 #
 #   bash envs/PROD/00-push-to-server.sh prod1                    # asks where you keep Docker apps there
 #   bash envs/PROD/00-push-to-server.sh prod1 /docker/compose    # -> /docker/compose/tbApps
+#   bash envs/DEV/00-push-to-server.sh local /docker/compose     # this machine itself (no ssh)
 #   bash envs/PROD/00-push-to-server.sh --tar                    # a .tar.gz to hand over another way
 #
-# <server> is a Host from ~/.ssh/config (or user@address). The package goes into a folder tbApps inside the
+# <server> is a Host from ~/.ssh/config (or user@address), or local for the machine you are on. The package goes into a folder tbApps inside the
 # parent folder you give (a FULL path, e.g. /docker/compose or /home/<you>); your answer is remembered in
 # this folder (.push-target, not in git). It also sets TB=<parent>/tbApps in the server user's ~/.bashrc, so
 # the guide's commands (cd $TB/tbbe && ./deploy.sh) work as written.
@@ -33,11 +34,19 @@ if [ "${1:-}" = --tar ]; then
   exit 0
 fi
 
-SERVER="${1:?usage: bash envs/$ENV_NAME/00-push-to-server.sh <server> [parent folder]   or   --tar}"
+SERVER="${1:?usage: bash envs/$ENV_NAME/00-push-to-server.sh <server|local> [parent folder]   or   --tar}"
+if [ "$SERVER" = local ]; then
+  run() { bash -c "$1"; }; DEST=""
+else
+  run() { ssh "$SERVER" "$1"; }; DEST="$SERVER:"
+fi
 command -v rsync >/dev/null || { echo "rsync is missing on the dev box (sudo apt install rsync) - or use --tar"; exit 1; }
-ssh -o BatchMode=yes -o ConnectTimeout=10 "$SERVER" true 2>/dev/null || {
-  echo "Cannot ssh to $SERVER without a password. Check:  ssh $SERVER hostname   (guide: getting into the server)"; exit 1; }
-ssh "$SERVER" "command -v rsync >/dev/null" || { echo "rsync is missing on $SERVER (sudo apt install rsync)."; exit 1; }
+if [ "$SERVER" != local ]; then
+  ssh -o BatchMode=yes -o ConnectTimeout=10 "$SERVER" true 2>/dev/null || {
+    echo "Cannot ssh to $SERVER without a password. Check:  ssh $SERVER hostname   (guide: getting into the server)"
+    echo "If $SERVER is this machine itself, use:  bash envs/$ENV_NAME/00-push-to-server.sh local <parent folder>"; exit 1; }
+  ssh "$SERVER" "command -v rsync >/dev/null" || { echo "rsync is missing on $SERVER (sudo apt install rsync)."; exit 1; }
+fi
 
 # --- where on the server ---------------------------------------------------------------------------
 PARENT="${2:-}"
@@ -51,26 +60,26 @@ fi
 PARENT=${PARENT%/}
 case "$PARENT" in /*) ;; *) echo "'$PARENT' is not a full path: it must start with /"; exit 1 ;; esac
 case "$PARENT" in *[[:space:]]*) echo "The path must not contain spaces."; exit 1 ;; esac
-ssh "$SERVER" "[ -d '$PARENT' ]" || { echo "$PARENT does not exist on $SERVER - create it first, or check the spelling."; exit 1; }
+run "[ -d '$PARENT' ]" || { echo "$PARENT does not exist on $SERVER - create it first, or check the spelling."; exit 1; }
 ROOT="$PARENT/tbApps"
 [ "${PARENT##*/}" = tbApps ] && ROOT="$PARENT"
-other=$(ssh "$SERVER" "grep -s '^ENVIRONMENT=' '$ROOT/environment.env' | cut -d= -f2-" || true)
+other=$(run "grep -s '^ENVIRONMENT=' '$ROOT/environment.env' | cut -d= -f2-" || true)
 [ -z "$other" ] || [ "$other" = "$ENV_NAME" ] || {
   echo "$ROOT on $SERVER holds the $other environment. One environment per server: pick the right server."; exit 1; }
-ssh "$SERVER" "mkdir -p '$ROOT'" || {
+run "mkdir -p '$ROOT'" || {
   echo "Cannot create $ROOT on $SERVER. If $PARENT belongs to root, run there once:"
   echo "  sudo mkdir -p $ROOT && sudo chown \$USER: $ROOT"; exit 1; }
 echo "$PARENT" > .push-target
 
 # --- copy ------------------------------------------------------------------------------------------
-echo "== $ENV_NAME -> $SERVER:$ROOT"
-rsync -rlt --itemize-changes "${SERVER_OWNED[@]}" ./ "$SERVER:$ROOT/"
+echo "== $ENV_NAME -> ${DEST:-this machine: }$ROOT"
+rsync -rlt --itemize-changes "${SERVER_OWNED[@]}" ./ "$DEST$ROOT/"
 # secrets.env goes only the first time; from then on the server's copy (with its passwords) is the real one
-rsync -rlt --ignore-existing --itemize-changes --chmod=F600 secrets.env "$SERVER:$ROOT/secrets.env"
+rsync -rlt --ignore-existing --itemize-changes --chmod=F600 secrets.env "$DEST$ROOT/secrets.env"
 
 # --- TB in the server user's ~/.bashrc --------------------------------------------------------------
-ssh "$SERVER" "touch ~/.bashrc; if grep -q '^export TB=' ~/.bashrc; then sed -i 's#^export TB=.*#export TB=$ROOT    \# Timebars $ENV_NAME (tbown)#' ~/.bashrc; else echo 'export TB=$ROOT    # Timebars $ENV_NAME (tbown)' >> ~/.bashrc; fi"
+run "touch ~/.bashrc; if grep -q '^export TB=' ~/.bashrc; then sed -i 's#^export TB=.*#export TB=$ROOT    \# Timebars $ENV_NAME (tbown)#' ~/.bashrc; else echo 'export TB=$ROOT    # Timebars $ENV_NAME (tbown)' >> ~/.bashrc; fi"
 
 echo
 echo "Done: $ENV_NAME is in $ROOT on $SERVER, and TB=$ROOT is set in ~/.bashrc there (new shells)."
-echo "Next:  ssh $SERVER   then follow the guide's server steps (or: cd \$TB && ./deploy-all.sh)."
+echo "Next:  ${DEST:+ssh $SERVER   then }follow the guide's server steps (or: cd \$TB && ./deploy-all.sh)."

@@ -48,7 +48,7 @@ Each environment runs on its own server, DEV included; environments never share 
 
 | Item | Notes |
 |---|---|
-| **Dev box** | any Ubuntu machine with VS Code, `git`, `python3`, `rsync` and `ssh`. It only edits and sends packages: no Docker, no environment runs on it. |
+| **Dev box** | any Ubuntu machine with VS Code, `git`, `python3`, `rsync` and `ssh`. It edits and sends packages. It can also be DEV's server (see [section 6](#6-send-the-package-to-the-server)); no other environment runs on it. |
 | **A server per environment** | Ubuntu 24.04 or 26.04, 2+ cores, 4 GB RAM (with swap), 100 GB disk, patched under your policies; an admin user with `sudo` and SSH key login; outbound internet to Docker Hub. With our Caddy proxy, ports 80 and 443 reachable by the users. |
 | **Docker Hub access** | a Docker Hub account with pull access granted by Timebars Ltd., and a read-only access token |
 | **Six names per environment** | Agilebars, Timebars, Costbars (one app, three names), the Strapi backend, the website, Timebars Cloud, for example `agile.prod.com`, `pmrm.prod.com`, `ppm.prod.com`, `be2.prod.com`, `www.prod.com`, `cloud.prod.com` |
@@ -144,6 +144,8 @@ bash envs/PROD/00-push-to-server.sh prod1 /docker/compose
 ```
 
 The second argument is the folder where you keep Docker apps on that server (a full path, for example `/docker/compose` or `/home/<you>`); leave it out and the script asks. The package lands in `tbApps` inside it, and the script sets `TB=<that folder>/tbApps` in your `~/.bashrc` on the server, so every command below works as written. It refuses a server that already holds another environment.
+
+**DEV on the dev box itself:** use `local` instead of a server name, for example `bash envs/DEV/00-push-to-server.sh local /docker/compose`. It copies without SSH, so nothing asks for a password; then carry on with section 7 in the same terminal (`source ~/.bashrc` first, to get `$TB`).
 
 Run it again after any change to the package: it never overwrites what belongs to the server (its passwords, running tags, uploaded files, the seed markers).
 
