@@ -1,44 +1,34 @@
 # tbown — Timebars self-hosted package
 
 For organisations that run the Timebars suite (Agilebars, Timebars, Costbars) on their own
-servers, using the container option or the own-the-code option.
-
-> **Status:** installation rehearsed end to end on a test server (October 2026). Release `v1.0.0`
-> follows the updated website and backend images — see `VERSION.md`.
+servers, using the container option.
 
 ## What is in here
 
 | Path | What it is |
 |---|---|
-| [`DEPLOY_TB_SYSTEM_CONTAINER_OPTION_V1.md`](DEPLOY_TB_SYSTEM_CONTAINER_OPTION_V1.md) | **Start here** — the step-by-step installation guide |
-| `docker/` | one folder per stack (compose file, `.env.example`, `deploy.sh`, config templates); sent to `<your folder>/tbApps` on the server |
-| `scripts_v1/` | `00-push-to-server.sh` (runs on your workstation) and `01`–`06` (run on the server: Docker, volumes, secrets, restore, backup, health check) |
-| `seed/` | demo seed data for a first start (no real users) |
+| [`DEPLOY_TB_SYSTEM_CONTAINER_OPTION_V2.md`](DEPLOY_TB_SYSTEM_CONTAINER_OPTION_V2.md) | **Start here** — configure every environment on a dev box, deploy each with one command |
+| `tbapps.conf.example` | copy to `tbapps.conf`: your domain and environments (DEV, STAGING, PROD, TRAINING) |
+| `scripts/apply.sh` | makes one ready-to-deploy folder per environment in `envs/` (ignored by git) |
+| `templates/` | what goes into each environment folder: stacks, proxy, `deploy-all.sh`, scripts |
+| `seed/` | demo seed data, loaded on each environment's first deploy |
 | [`VERSION.md`](VERSION.md) | the image tags this release was tested with |
 | [`WELCOME_EMAIL_CONTAINER_OPTION.md`](WELCOME_EMAIL_CONTAINER_OPTION.md) | the getting-started email Timebars Ltd. sends with this package (template) |
+| [`DEPLOY_TB_SYSTEM_CONTAINER_OPTION_V1.md`](DEPLOY_TB_SYSTEM_CONTAINER_OPTION_V1.md), `docker/`, `scripts_v1/` | V1: one settings file per server — kept for servers installed that way |
 
-## How it is installed
-
-Keep this package on your **admin workstation** (clone it, or unpack a release download) and run
-the installation from there:
+## How it is deployed (V2)
 
 ```bash
-git clone https://github.com/jimecox2/tbown.git ~/tbown && cd ~/tbown
-bash scripts_v1/00-push-to-server.sh myserver      # sends the stacks, scripts and seed to <your folder>/tbApps on the server
-ssh myserver                                    # every further step runs on the server, as the guide says
+git clone https://github.com/jimecox2/tbown.git ~/tbown && code ~/tbown     # on the dev box
+cp tbapps.conf.example tbapps.conf                                          # fill it in
+bash scripts/apply.sh                                                       # envs/DEV, envs/PROD ...
+cd envs/DEV && ./deploy-all.sh                                              # DEV on the dev box
+cd ../PROD && ./push.sh <server> /srv/timebars/PROD                         # then ./deploy-all.sh there
 ```
-
-Your organisation's administrator prepares and secures the server under your own policies; the
-guide states only the end state the stack needs (section 4). The scripts install Docker and the
-Timebars stack. Secrets (passwords, tokens, keys) are generated on the server and never stored in
-this repository or on your workstation.
 
 ## Not in here
 
 - **The application images** — pulled from Docker Hub (`jimecox807/tbrun`, `tbbe`, `tbwwwp`, `tbhelpapp`).
-- **Your settings** — one file, `tbapps.conf` (addresses, keys and passwords made on the server), made by `scripts_v1/03-config.sh` and ignored by git.
-- **Decision documents** — see *Customer Ownership and Installation Options* and the
-  *Administrators Guide* (in the Timebars help documentation).
+- **Your settings and secrets** — `tbapps.conf` and `envs/` stay on the dev box; passwords are made on each server.
 
-Licence terms: to be published with release `v1.0.0`.
 Questions: Timebars Ltd. — jcox@tbcox.com

@@ -1,0 +1,47 @@
+# PostgreSQL for Strapi (tbbe). Settings in .env.local, keys and passwords in .secrets.env (chmod 600); the image tag in .env (deploy.sh).
+# Port 5433 is bound to this server only - from another machine use an SSH tunnel:
+#   ssh -N -L 5433:localhost:5433 <server>
+services:
+  tbpgdb:
+    image: postgres:${POSTGRES_TAG:?run ./deploy.sh first, it sets POSTGRES_TAG in .env}
+    container_name: tbpgdb
+    restart: always
+    env_file: [.env.local, .secrets.env]   # settings (from apply) + keys and passwords (made where it runs)
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_db:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro     # runs once, on an empty database only
+    networks:
+      - tbnet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Optional web admin for PostgreSQL. Start it only when needed:
+  #   docker compose --profile tools up -d pgadmin4
+  # then open http://localhost:5050 through an SSH tunnel: ssh -N -L 5050:localhost:5050 <server>
+  pgadmin4:
+    image: dpage/pgadmin4:${PGADMIN_TAG:-latest}
+    container_name: pgadmin4
+    profiles: ["tools"]
+    restart: unless-stopped
+    env_file: [.env.local, .secrets.env]            # PGADMIN_DEFAULT_EMAIL / PGADMIN_DEFAULT_PASSWORD
+    ports:
+      - "127.0.0.1:5050:80"
+    volumes:
+      - postgres_pgadmin:/var/lib/pgadmin
+    networks:
+      - tbnet
+
+volumes:
+  postgres_db:
+    external: true          # created by deploy-all.sh, survives "docker compose down"
+  postgres_pgadmin:
+    external: true
+
+networks:
+  tbnet:
+    external: true          # shared by every Timebars container; created by deploy-all.sh

@@ -14,7 +14,8 @@ network `tbnet`).
 | Timebars Cloud + AI (helpapp) | `jimecox807/tbhelpapp` | `2026.10.09` | routes `/api/ai/*` need your Gemini key; checks the Timebars Cloud login |
 | Database | `postgres` | `16` | official image; the seed (made on PostgreSQL 14) restores into it |
 | Database admin (optional) | `dpage/pgadmin4` | `latest` | profile `tools`; not started by `deploy.sh` |
-| Tunnel (optional) | `cloudflare/cloudflared` | `2026.10.0` | one connector per server |
+| Proxy (V2, PROXY=caddy) | `caddy` | `2.11.7-alpine` | answers every name over HTTPS; not started with PROXY=own |
+| Tunnel (V1 only) | `cloudflare/cloudflared` | `2026.10.0` | one connector per server |
 
 Seed: `seed/seed.dump` (Strapi database, 2.9 MB) and `seed/seed-uploads.tar.gz` (25 MB), October 2026.
 

@@ -1,0 +1,29 @@
+# Timebars Cloud (helpapp, Next.js): dashboards, notifications, and the AI routes (/api/ai/*) that call
+# Google Gemini. Settings in .env.local, keys and passwords in .secrets.env (chmod 600), read at run time; the image tag in .env (deploy.sh).
+# The app's nginx proxies /ai/ here by name (tbhelpapp) over tbnet; Strapi is http://tbbe:1337 on tbnet.
+# Port 3010 is bound to this server only; cloud.<domain> goes through the proxy (http://tbhelpapp:3010).
+services:
+  tbhelpapp:
+    image: jimecox807/tbhelpapp:${HELPAPP_TAG:?run ./deploy.sh first, it sets HELPAPP_TAG in .env}
+    container_name: tbhelpapp
+    restart: always
+    env_file: [.env.local, .secrets.env]   # settings (from apply) + keys and passwords (made where it runs)
+    environment:
+      NODE_ENV: production
+    ports:
+      - "127.0.0.1:3010:3010"
+    networks:
+      - tbnet
+    # Timebars Ltd. LAN only (the /aitemp page's local model). Leave commented elsewhere.
+    # extra_hosts:
+    #   - "ollama-server:192.168.1.9"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3010/api/ai/help',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  tbnet:
+    external: true          # shared by every Timebars container; created by deploy-all.sh

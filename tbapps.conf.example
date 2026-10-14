@@ -1,0 +1,67 @@
+# tbapps.conf - every environment of your Timebars system, in one file, on the dev box.
+# Make yours:   cp tbapps.conf.example tbapps.conf   (tbapps.conf is never committed to git)
+# Then:         bash scripts/apply.sh                (writes one folder per environment: envs/DEV, envs/PROD ...)
+#
+# [ALL] holds what every environment shares. Each [SECTION] below makes one environment; delete the ones
+# you do not need, or add your own name (letters only). A section may repeat any [ALL] key to override it.
+# Only the section named PROD is open to search engines; every other environment sends "noindex".
+# Plain KEY=VALUE lines; hostnames only (no https://, no / at the end); no comments after a value.
+
+[ALL]
+# Your domain. Each environment's names are agile<SUFFIX>.<DOMAIN>, pmrm<SUFFIX>... unless set below.
+DOMAIN=example.com
+# Let's Encrypt sends certificate notices here (only with PROXY=caddy and TLS=letsencrypt)
+ACME_EMAIL=it@example.com
+# Sender of registration and password emails - a sender verified in SendGrid
+EMAIL_FROM=noreply@example.com
+# Replies go here (empty = EMAIL_FROM)
+EMAIL_REPLY_TO=
+# yes = Agilebars / Timebars / Costbars keep working offline after the first visit (needs trusted HTTPS)
+APP_OFFLINE=yes
+# Other browser origins Strapi accepts, besides this environment's own names
+EXTRA_CORS_ORIGINS=https://checkout.stripe.com,http://localhost:*
+# Optional: your OpenProject address, e.g. https://op.example.com
+OP_URL=
+# Keys: optional here - recommended is to leave them empty and paste them into secrets.env on the machine
+# where the environment runs (guide: keys and passwords). Set here, they are copied into every
+# environment's secrets.env.
+GEMINI_API_KEY=
+SENDGRID_API_KEY=
+
+[DEV]
+# The address the names point at: DNS records, or hosts-file lines on the machines that use it
+SERVER_IP=192.168.1.50
+# caddy = our proxy container answers the names on this machine; own = your proxy (you get the routes)
+PROXY=caddy
+# letsencrypt = public names, ports 80/443 reachable from the internet; internal = Caddy's own certificates
+# (names only in a hosts file or internal DNS; trust Caddy's root certificate on each browser machine)
+TLS=internal
+# Added to every name: agiled.example.com, be2d.example.com ...
+NAME_SUFFIX=d
+
+[STAGING]
+SERVER_IP=
+PROXY=caddy
+TLS=letsencrypt
+NAME_SUFFIX=s
+
+[PROD]
+SERVER_IP=
+PROXY=caddy
+TLS=letsencrypt
+NAME_SUFFIX=
+# Any name can be set exactly, e.g.:
+# APP_AB_HOST=agile.example.com
+# APP_TB_HOST=pmrm.example.com
+# APP_CB_HOST=ppm.example.com
+# BACKEND_HOST=be2.example.com
+# WEBSITE_HOST=www.example.com
+# CLOUD_HOST=cloud.example.com
+# Optional extra app names, no offline: host:AB host:TB host:CB
+# EXTRA_APP_HOSTS=ab.example.com:AB tb.example.com:TB cb.example.com:CB
+
+[TRAINING]
+SERVER_IP=
+PROXY=caddy
+TLS=letsencrypt
+NAME_SUFFIX=t
