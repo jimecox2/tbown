@@ -17,7 +17,7 @@ up Agilebars, Timebars and Costbars on your own server. Keep it with the package
 | Item | Where |
 |---|---|
 | **Installation package** — compose files, scripts, seed data and the step-by-step guide | https://github.com/jimecox2/tbown (clone it, or download the ZIP from the green *Code* button) |
-| **The guide** — follow it in order | `INSTALLATION_AND_CONFIGURATION_OF_THE_TIMEBARS_SYSTEM_CONTAINER_OPTION.md` in the package |
+| **The guide** — follow it in order | `DEPLOY_TB_SYSTEM_CONTAINER_OPTION_V1.md` in the package |
 | **Application images** | Docker Hub, pulled during the install once we have granted your account access (step 2 below) |
 | **Seed data** — our product catalogue, website content and demo accounts | `seed/` in the package; loaded in section 11 of the guide |
 
@@ -60,7 +60,7 @@ The guide has the detail; this is the shape of it.
 |---|---|---|
 | 1 | Name the server and set up SSH keys from your workstation | 3 |
 | 2 | Check the server meets the requirements | 4 |
-| 3 | Send the package to the server: `bash scripts/00-push-to-server.sh <server>` | 5 |
+| 3 | Send the package to the server: `bash scripts_v1/00-push-to-server.sh <server>` | 5 |
 | 4 | Install Docker, then log in to Docker Hub with your read-only token | 6 |
 | 5 | Volumes, network and settings (secrets generated on the server, never copied anywhere) | 7 |
 | 6 | Publish your HTTPS addresses (tunnel or your proxy) | 8 |
@@ -105,7 +105,7 @@ By phone or another channel you choose — not by email:
 ## 7. Help
 
 If a step does not go as written, send us the output of
-`bash $TB/scripts/06-health-check.sh` and `docker logs --tail 100 <container>` — never `tbapps.conf`, `.env.local`
+`bash $TB/scripts_v1/06-health-check.sh` and `docker logs --tail 100 <container>` — never `tbapps.conf`, `.env.local`
 files, tokens or passwords.
 
 «Your name»

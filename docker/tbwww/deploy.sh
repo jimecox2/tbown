@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# deploy.sh — tbwww stack (container tbwwwp). Same steps as every stack: ../scripts/deploy-common.sh
+# deploy.sh — tbwww stack (container tbwwwp). Same steps as every stack: ../scripts_v1/deploy-common.sh
 cd "$(dirname "$0")" || exit 1
 STACK_IMAGE=jimecox807/tbwwwp
 STACK_TAG_VAR=TBWWW_TAG
@@ -11,4 +11,4 @@ stack_after() {
   [ "$code" = 200 ] && echo "  Website home page answers 200" || echo "  WARNING: website home page answered $code (is Strapi up? docker logs tbwwwp)"
 }
 
-. ../scripts/deploy-common.sh
+. ../scripts_v1/deploy-common.sh

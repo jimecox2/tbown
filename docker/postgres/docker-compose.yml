@@ -38,7 +38,7 @@ services:
 
 volumes:
   postgres_db:
-    external: true          # created by scripts/02-create-volumes.sh, survives "docker compose down"
+    external: true          # created by scripts_v1/02-create-volumes.sh, survives "docker compose down"
   postgres_pgadmin:
     external: true
 

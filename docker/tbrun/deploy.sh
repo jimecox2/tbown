@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# deploy.sh — tbrun stack (container tbrun, the app). Same steps as every stack: ../scripts/deploy-common.sh
+# deploy.sh — tbrun stack (container tbrun, the app). Same steps as every stack: ../scripts_v1/deploy-common.sh
 # The app has no secrets: its settings file is runtime-config.json (addresses only), not .env.local.
 cd "$(dirname "$0")" || exit 1
 STACK_IMAGE=jimecox807/tbrun
@@ -19,4 +19,4 @@ stack_after() {
   case "$code" in 401|400) echo "  /ai/ reaches the AI service ($code)" ;; *) echo "  NOTE: /ai/ answered $code - AI needs the tbhelp stack running" ;; esac
 }
 
-. ../scripts/deploy-common.sh
+. ../scripts_v1/deploy-common.sh

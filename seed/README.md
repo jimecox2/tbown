@@ -4,7 +4,7 @@ The Timebars Ltd. Strapi database (products, website content, demo and test acco
 uploads — the data the hosted service runs on. Restore it with:
 
 ```bash
-bash ~/docker/scripts/04-restore.sh      # on the server; loads seed.dump and seed-uploads.tar.gz
+bash ~/docker/scripts_v1/04-restore.sh      # on the server; loads seed.dump and seed-uploads.tar.gz
 ```
 
 Files:

@@ -2,9 +2,9 @@
 # 05-backup.sh — nightly backup: Strapi database (pg_dump), Strapi uploads, and each stack's settings
 # (tbapps.conf, and the files written from it: .env.local, runtime-config.json; .env with the deployed tag).
 # Keeps KEEP_DAYS days. Copy the backup folder OFF this server too (your backup system).
-#   bash $TB/scripts/05-backup.sh [stack root] [backup folder]
+#   bash $TB/scripts_v1/05-backup.sh [stack root] [backup folder]
 # Cron (crontab -e as your admin user), every night at 02:15:
-#   15 2 * * * /bin/bash <your tbApps folder>/scripts/05-backup.sh >> $HOME/backups/timebars/backup.log 2>&1
+#   15 2 * * * /bin/bash <your tbApps folder>/scripts_v1/05-backup.sh >> $HOME/backups/timebars/backup.log 2>&1
 set -euo pipefail
 ROOT="${1:-$(cd "$(dirname "$0")/.." && pwd)}"   # the tbApps folder this script lives in
 DEST_ROOT="${2:-$HOME/backups/timebars}"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 06-health-check.sh — is everything up, and on which tags? Read-only. On the server, any time:
-#   bash $TB/scripts/06-health-check.sh
+#   bash $TB/scripts_v1/06-health-check.sh
 ok()   { printf '  \033[32mOK\033[0m    %s\n' "$1"; }
 bad()  { printf '  \033[31mFAIL\033[0m  %s\n' "$1"; FAIL=1; }
 FAIL=0
@@ -16,7 +16,7 @@ for pair in postgres:tbpgdb tbbe:tbbe tbwww:tbwwwp tbhelp:tbhelpapp tbrun:tbrun 
   note=""; [ -n "$listed" ] && [ "$tag" != "$listed" ] && note="  (VERSION.md: $listed)"
   case "$s" in healthy|running) ok "$c $s, ${tag:-?}$note" ;; *) bad "$c $s - cd $ROOT/$stack && ./deploy.sh" ;; esac
 done
-docker network inspect tbnet >/dev/null 2>&1 && ok "network tbnet" || bad "network tbnet missing - bash $ROOT/scripts/02-create-volumes.sh"
+docker network inspect tbnet >/dev/null 2>&1 && ok "network tbnet" || bad "network tbnet missing - bash $ROOT/scripts_v1/02-create-volumes.sh"
 # A Cloudflare tunnel reaches the apps by container name, so it must be on tbnet - also a tunnel container
 # that is not ours (another name, started from Portainer or another compose file). When tbnet is removed
 # and made again, such a container is NOT put back on it, and a restart does not help: every address

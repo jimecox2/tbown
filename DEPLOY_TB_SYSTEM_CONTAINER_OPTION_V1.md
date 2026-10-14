@@ -1,4 +1,9 @@
-# Installation and Configuration of the Timebars System — Container Option
+# Deploy the Timebars System — Container Option, V1
+
+> **V1 (one `tbapps.conf` per server, scripts in `scripts_v1/`).** Kept so existing servers keep working the
+> old way. A server installed before this rename has its scripts in `$TB/scripts`: after the next
+> `00-push-to-server.sh` they are in `$TB/scripts_v1` — point your backup cron line there, then
+> `rm -rf $TB/scripts`.
 
 > **Rehearsed end to end** on a test server (Ubuntu 26.04, Docker 29.8, October 2026). Since then every
 > stack is deployed the same way: one settings file `tbapps.conf`, the image tag in `.env`, `./deploy.sh` in each
@@ -53,7 +58,7 @@ and the passwords generated on the server. `03-config.sh apply` writes every `.e
 `runtime-config.json` from it (section 7).
 
 To start or update a stack: `cd $TB/<stack> && ./deploy.sh` and type the tag from `VERSION.md`.
-To change a setting: edit `tbapps.conf`, then `bash $TB/scripts/03-config.sh apply` — it recreates the
+To change a setting: edit `tbapps.conf`, then `bash $TB/scripts_v1/03-config.sh apply` — it recreates the
 containers whose settings changed. Images are never rebuilt for your server.
 
 All containers share one Docker network, **`tbnet`**, and reach each other by name. Their ports are bound to
@@ -73,8 +78,8 @@ Project data lives in each user's browser; the server holds accounts, licences a
 ```text
  workstation                                   server
  ~/tbown  (this package, your copy)            <parent>/tbApps = $TB
-   docker/   scripts/   seed/      ── 00-push-to-server.sh ──►   $TB/postgres  tbbe  tbwww  tbhelp  tbrun  cloudflared
-                                               $TB/scripts/   $TB/seed/
+   docker/   scripts_v1/   seed/      ── 00-push-to-server.sh ──►   $TB/postgres  tbbe  tbwww  tbhelp  tbrun  cloudflared
+                                               $TB/scripts_v1/   $TB/seed/
                                                $TB/tbapps.conf   ← your settings; passwords generated ON the server
 ```
 
@@ -243,7 +248,7 @@ then never mixes with your other apps.
 On your workstation, in your copy of the package:
 ```bash
 cd ~/tbown && git pull                                  # latest version (skip for a release download)
-bash scripts/00-push-to-server.sh myserver /docker/compose
+bash scripts_v1/00-push-to-server.sh myserver /docker/compose
 ```
 Leave the folder out and the script asks for it; it remembers your answer for that server next time. If the
 parent belongs to root, the script tells you the one `sudo` command to run on the server first.
@@ -267,7 +272,7 @@ or your copy of the package is already on the server — there is nothing to con
 is needed and section 3 does not apply. Use the word `local` instead of a server name:
 ```bash
 cd ~/tbown                                              # wherever your copy of the package is
-bash scripts/00-push-to-server.sh local /docker/compose
+bash scripts_v1/00-push-to-server.sh local /docker/compose
 source ~/.bashrc                                        # this terminal learns $TB (new terminals have it)
 echo $TB                                                # /docker/compose/tbApps
 ```
@@ -279,7 +284,7 @@ the script set it: run `source ~/.bashrc`.
 ## 6. Install Docker
 
 ```bash
-sudo bash $TB/scripts/01-install-docker.sh
+sudo bash $TB/scripts_v1/01-install-docker.sh
 exit                                            # log out and back in, so docker works without sudo
 ```
 ```bash
@@ -305,7 +310,7 @@ From here on, run every script **without `sudo`**, as your admin user — the fi
 belong to you, in `$TB`. If a script says it cannot use Docker, log out and back in (section 6).
 
 ```bash
-bash $TB/scripts/02-create-volumes.sh      # database volumes and the network tbnet
+bash $TB/scripts_v1/02-create-volumes.sh      # database volumes and the network tbnet
 ```
 
 ### 7.1 Make your settings file, `tbapps.conf`
@@ -316,8 +321,8 @@ out from it.
 
 **a. Answer a few questions** — on your workstation (in your copy of the package) or on the server:
 ```bash
-bash scripts/03-config.sh new              # workstation: writes tbapps.conf in the package folder
-bash $TB/scripts/03-config.sh new          # or on the server: writes $TB/tbapps.conf
+bash scripts_v1/03-config.sh new              # workstation: writes tbapps.conf in the package folder
+bash $TB/scripts_v1/03-config.sh new          # or on the server: writes $TB/tbapps.conf
 ```
 It asks your domain (e.g. `example.com`), an optional letter added to every name (`s` for a staging
 server: `agiles`, `be2s` …), proposes the six addresses — press Enter to accept each — and asks whether to
@@ -336,14 +341,14 @@ nano $TB/tbapps.conf                       # paste, then Ctrl+O, Enter (save), C
 
 **d. Apply it**:
 ```bash
-bash $TB/scripts/03-config.sh apply
+bash $TB/scripts_v1/03-config.sh apply
 ```
 `apply` checks the file (hostnames only, no `https://`, no address used twice, emails look like emails),
 generates every password and key that is made on the server — the first time only, kept from then on —
 writes them into part 4 of `tbapps.conf`, sets a changed `POSTGRES_PASSWORD` or `STRAPI_DB_PASSWORD` in
 the running database, and writes each stack's `.env.local` and
 `tbrun/runtime-config.json`. It lists what changed per stack and, if those containers are already
-running, offers to recreate them. `bash $TB/scripts/03-config.sh check` shows the same list without
+running, offers to recreate them. `bash $TB/scripts_v1/03-config.sh check` shows the same list without
 writing anything.
 
 The file has four parts:
@@ -368,7 +373,7 @@ settings, so every password stays as it is.
 **A server set up before `tbapps.conf`** (settings in `.env.local` files): make the file from what is
 there, keeping every password, then check that nothing would change:
 ```bash
-bash $TB/scripts/03-config.sh import && bash $TB/scripts/03-config.sh check
+bash $TB/scripts_v1/03-config.sh import && bash $TB/scripts_v1/03-config.sh check
 ```
 
 ## 8. Public addresses: DNS, HTTPS and the tunnel
@@ -383,7 +388,7 @@ offline mode).
 ### 8.1 Cloudflare Tunnel (no open ports)
 
 1. In Cloudflare Zero Trust → Networks → Tunnels, create a tunnel (one per server) and paste its token as
-   `TUNNEL_TOKEN=` in `tbapps.conf`, then `bash $TB/scripts/03-config.sh apply`.
+   `TUNNEL_TOKEN=` in `tbapps.conf`, then `bash $TB/scripts_v1/03-config.sh apply`.
 2. `cd $TB/cloudflared && ./deploy.sh` — it shows *Registered tunnel connection*, and the tunnel shows
    *Healthy* in the dashboard.
 3. Add one *published application* per hostname, service type **HTTP**, pointing at the **container
@@ -458,7 +463,7 @@ Expected messages in the log on a first start:
 ## 11. Load the seed data or a backup
 
 ```bash
-bash $TB/scripts/04-restore.sh            # loads $TB/seed/seed.dump and seed-uploads.tar.gz
+bash $TB/scripts_v1/04-restore.sh            # loads $TB/seed/seed.dump and seed-uploads.tar.gz
 ```
 The same script restores your own backups (section 17). It stops Strapi, drops and re-creates the Strapi
 database (`STRAPI_DB_NAME`, normally `strapi`, owned by role `strapi`), loads the dump into it — whatever
@@ -482,7 +487,7 @@ After the seed is loaded:
 Check that Strapi reads the restored data:
 ```bash
 docker exec tbpgdb psql -U strapi -d strapi -Atc "select 'users', count(*) from up_users union all select 'products', count(*) from products"
-bash $TB/scripts/07-check-urls.sh       # the Strapi lines are OK now
+bash $TB/scripts_v1/07-check-urls.sh       # the Strapi lines are OK now
 ```
 
 ## 12. Website
@@ -504,7 +509,7 @@ are logged in to your Timebars Cloud (Strapi).
 1. Create a Gemini key in your own Google account (aistudio.google.com → *API keys*), restricted to the
    Generative Language API. Turn on billing and a budget alert if you expect more than the free tier.
 2. Put it in `tbapps.conf` as `GEMINI_API_KEY=` (if you did not already in section 7), then
-   `bash $TB/scripts/03-config.sh apply`.
+   `bash $TB/scripts_v1/03-config.sh apply`.
 3. Deploy:
 ```bash
 cd $TB/tbhelp && ./deploy.sh
@@ -540,15 +545,15 @@ Users & Roles) call Strapi with a server-side token.
    `tbhelpapp`:
 ```bash
 nano $TB/tbapps.conf
-bash $TB/scripts/03-config.sh apply
+bash $TB/scripts_v1/03-config.sh apply
 ```
 This is how every setting changes: edit `tbapps.conf`, apply — no new image.
 
 ## 16. Check the installation
 
 ```bash
-bash $TB/scripts/06-health-check.sh      # inside the server: every container, its health and running tag
-bash $TB/scripts/07-check-urls.sh        # from outside: every public address, through the tunnel or proxy
+bash $TB/scripts_v1/06-health-check.sh      # inside the server: every container, its health and running tag
+bash $TB/scripts_v1/07-check-urls.sh        # from outside: every public address, through the tunnel or proxy
 ```
 `06` compares each container's tag with `VERSION.md`. `07` reads your addresses from the settings files
 (written from `tbapps.conf`: every app address including the extras, Strapi, the website and Cloud) and checks each page, the AI route, the offline worker, `runtime-config.json`, the dashboard
@@ -563,9 +568,9 @@ Application → Service Workers shows `sw.js` activated; tick *Offline* and pres
 ## 17. Backups
 
 ```bash
-bash $TB/scripts/05-backup.sh           # try it once
+bash $TB/scripts_v1/05-backup.sh           # try it once
 crontab -e                                   # then schedule it nightly:
-# 15 2 * * * /bin/bash $HOME/docker/scripts/05-backup.sh >> $HOME/backups/timebars/backup.log 2>&1
+# 15 2 * * * /bin/bash $HOME/docker/scripts_v1/05-backup.sh >> $HOME/backups/timebars/backup.log 2>&1
 ```
 Each backup holds the Strapi database, its uploads, `tbapps.conf` and the files written from it (the folder is private to your admin user). Copy `~/backups/timebars` off the server with your normal backup system, and practise a
 restore.
@@ -577,10 +582,10 @@ your document management system (see the *Data Synchronization, Backup, Recovery
 
 | What | How |
 |---|---|
-| This package | workstation: `git pull` (or new release), then `bash scripts/00-push-to-server.sh myserver` |
+| This package | workstation: `git pull` (or new release), then `bash scripts_v1/00-push-to-server.sh myserver` |
 | Any container | server: `cd $TB/<stack> && ./deploy.sh` and type the new tag from `VERSION.md`; back up first for `tbbe` |
 | Roll back | the same, with the previous tag (`deploy.sh` shows the one running now) |
-| A setting (address, key) | edit `tbapps.conf`, then `bash $TB/scripts/03-config.sh apply` (it recreates what changed) |
+| A setting (address, key) | edit `tbapps.conf`, then `bash $TB/scripts_v1/03-config.sh apply` (it recreates what changed) |
 | PostgreSQL major version | backup → new empty volume → `./deploy.sh` with the new major tag → restore (`deploy.sh` refuses a major change on a database with data) |
 | Ubuntu, firewall, SSH | your administrator, under your policies |
 
@@ -589,11 +594,11 @@ your document management system (see the *Data Synchronization, Backup, Recovery
 `docker compose down`; make `tbapps.conf` with `03-config.sh new`, and copy the database passwords and
 Strapi secrets from the old `postgres/.env` and `tbbe/.env` into its part 4 (`POSTGRES_PASSWORD`,
 `STRAPI_DB_PASSWORD`, `APP_KEYS`, `API_TOKEN_SALT`, `ADMIN_JWT_SECRET`, `TRANSFER_TOKEN_SALT`, `JWT_SECRET`)
-before the first `apply`; then `bash $TB/scripts/02-create-volumes.sh` and `./deploy.sh` in each stack,
+before the first `apply`; then `bash $TB/scripts_v1/02-create-volumes.sh` and `./deploy.sh` in each stack,
 database first. Delete the old folders and networks (`docker network rm postgres_tbpg_net tbhelp`) once
 everything is green. Change the tunnel routes to `http://tbrun:80` for the app hostnames.
 
-**From the first `tbApps` layout** (settings typed into each `.env.local`): `bash $TB/scripts/03-config.sh
+**From the first `tbApps` layout** (settings typed into each `.env.local`): `bash $TB/scripts_v1/03-config.sh
 import`, then `check` — it should show no changes. From then on edit `tbapps.conf` only.
 
 ## 19. Troubleshooting
@@ -605,7 +610,7 @@ import`, then `check` — it should show no changes. From then on edit `tbapps.c
 | `apt`: *Temporary failure resolving* | the server has no DNS — your administrator sets gateway and DNS servers |
 | `permission denied ... docker.sock` | log out and back in after section 6 |
 | Docker install says *Cannot reach download.docker.com* | the server has no internet access to Docker (proxy, firewall); fix it and run the script again |
-| `tbpgdb` keeps restarting; log: *database files are incompatible with server … initialized by PostgreSQL version 14* | the volume `postgres_db` holds a database from an earlier install. Not needed: `cd $TB/postgres && docker compose down; docker volume rm postgres_db; bash $TB/scripts/02-create-volumes.sh; ./deploy.sh`. Needed: back it up with the old version first, then restore it into the new one (`04-restore.sh`) |
+| `tbpgdb` keeps restarting; log: *database files are incompatible with server … initialized by PostgreSQL version 14* | the volume `postgres_db` holds a database from an earlier install. Not needed: `cd $TB/postgres && docker compose down; docker volume rm postgres_db; bash $TB/scripts_v1/02-create-volumes.sh; ./deploy.sh`. Needed: back it up with the old version first, then restore it into the new one (`04-restore.sh`) |
 | Strapi cannot reach the database (`password authentication failed for user "strapi"`) | the database has another password than `tbapps.conf` part 4 holds. Restore the old `tbapps.conf` from your vault or backup and apply — or keep the new value and apply: it sets it in the database |
 | Every public address answers 502 (`07`), but `06` shows everything healthy | the tunnel container is not on `tbnet` (typical after a clean reinstall, which removes and re-creates `tbnet`): `docker network connect tbnet <tunnel container>` — `06` names it (section 8.1) |
 | `03-config.sh apply`: *No tbapps.conf* | it was renamed or moved — `ls $TB/tbapps.conf*` and rename it back; or `03-config.sh new`, then apply (it keeps the server's passwords) |
@@ -623,10 +628,10 @@ import`, then `check` — it should show no changes. From then on edit `tbapps.c
 | `bash: $TB/tbapps.conf: Permission denied` | you typed the file's path as a command; open it with `nano $TB/tbapps.conf` (section 7.1) |
 | An editor cannot save `tbapps.conf` | it was created with `sudo`: `sudo chown $USER: $TB/tbapps.conf $TB/*/.env.local` once, then no `sudo` again |
 | `deploy.sh`: *Not set: ...* | add those values to `tbapps.conf`, then `03-config.sh apply` |
-| `docker compose`: *env file .env.local not found* | `bash $TB/scripts/03-config.sh apply` (section 7.1) |
-| Strapi admin login fails; `docker logs tbbe` shows *originList.split is not a function* | the backend's own address was not an allowed origin. Fixed in `03-config.sh apply` (it now lists `BACKEND_HOST` too) and in tbbe images after 2026.10.09: run `bash $TB/scripts/03-config.sh apply` and recreate tbbe |
+| `docker compose`: *env file .env.local not found* | `bash $TB/scripts_v1/03-config.sh apply` (section 7.1) |
+| Strapi admin login fails; `docker logs tbbe` shows *originList.split is not a function* | the backend's own address was not an allowed origin. Fixed in `03-config.sh apply` (it now lists `BACKEND_HOST` too) and in tbbe images after 2026.10.09: run `bash $TB/scripts_v1/03-config.sh apply` and recreate tbbe |
 | Strapi admin login fails with the right page shown | wrong email or password for the account in the restored data (a restore brings back the dump's admin passwords, section 11) — list the admin accounts: `docker exec tbpgdb psql -U strapi -d strapi -Atc "select email, is_active, blocked from admin_users"`, and reset a password with `docker exec -it tbbe strapi admin:reset-user-password` (it asks for the email and the new password). After 5 failed tries Strapi refuses every login for that email for 5 minutes — wait before trying again |
 | `03-config.sh apply`: *Stopped: the database already exists and … would change* | a database **name** in part 4 (`POSTGRES_USER`, `STRAPI_DB_NAME`, `STRAPI_DB_USER`) differs from the running database — put back the value shown in `$TB/postgres/.env.local`. Passwords may change; names may not |
 
-For help, send the output of `bash $TB/scripts/06-health-check.sh` and
+For help, send the output of `bash $TB/scripts_v1/06-health-check.sh` and
 `docker logs --tail 100 <container>` — never send `tbapps.conf`, `.env.local` files, tokens or passwords.

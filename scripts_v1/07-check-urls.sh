@@ -7,8 +7,8 @@
 #   website        NEXTAUTH_URL   in $TB/tbwww/.env.local
 #   Timebars Cloud NEXTAUTH_URL   in $TB/tbhelp/.env.local
 #
-#   bash $TB/scripts/07-check-urls.sh                     # on the server
-#   bash $TB/scripts/07-check-urls.sh ab.rlan.ca tb.rlan.ca   # plus app hosts not in runtime-config.json
+#   bash $TB/scripts_v1/07-check-urls.sh                     # on the server
+#   bash $TB/scripts_v1/07-check-urls.sh ab.rlan.ca tb.rlan.ca   # plus app hosts not in runtime-config.json
 #
 # Cloudflare answers 530 / 1033 when a hostname has no published application on a running tunnel,
 # and 502 when the route exists but the container name or port is wrong (or the container is down).

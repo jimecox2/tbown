@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# deploy.sh — tbbe stack (container tbbe, Strapi). Same steps as every stack: ../scripts/deploy-common.sh
+# deploy.sh — tbbe stack (container tbbe, Strapi). Same steps as every stack: ../scripts_v1/deploy-common.sh
 cd "$(dirname "$0")" || exit 1
 STACK_IMAGE=jimecox807/tbbe
 STACK_TAG_VAR=TBBE_TAG
@@ -15,4 +15,4 @@ stack_after() {
   [ "$code" = 204 ] && echo "  Strapi /_health answers 204" || echo "  WARNING: Strapi /_health answered $code"
 }
 
-. ../scripts/deploy-common.sh
+. ../scripts_v1/deploy-common.sh

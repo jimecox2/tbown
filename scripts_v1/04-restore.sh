@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # 04-restore.sh — load a Strapi database dump (and its uploads) into this server.
 # Used for the demo seed data and for restoring your own backups (05-backup.sh).
-#   bash $TB/scripts/04-restore.sh                       (the seed: $TB/seed/seed.dump + seed-uploads.tar.gz)
-#   bash $TB/scripts/04-restore.sh <dump> [uploads.tar.gz] (a backup made by 05-backup.sh)
+#   bash $TB/scripts_v1/04-restore.sh                       (the seed: $TB/seed/seed.dump + seed-uploads.tar.gz)
+#   bash $TB/scripts_v1/04-restore.sh <dump> [uploads.tar.gz] (a backup made by 05-backup.sh)
 # Replaces everything in the Strapi database. Strapi is stopped during the restore.
 set -euo pipefail
 ROOT="${3:-$(cd "$(dirname "$0")/.." && pwd)}"   # the tbApps folder this script lives in

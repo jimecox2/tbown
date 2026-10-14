@@ -10,9 +10,9 @@ servers, using the container option or the own-the-code option.
 
 | Path | What it is |
 |---|---|
-| [`INSTALLATION_AND_CONFIGURATION_OF_THE_TIMEBARS_SYSTEM_CONTAINER_OPTION.md`](INSTALLATION_AND_CONFIGURATION_OF_THE_TIMEBARS_SYSTEM_CONTAINER_OPTION.md) | **Start here** — the step-by-step installation guide |
+| [`DEPLOY_TB_SYSTEM_CONTAINER_OPTION_V1.md`](DEPLOY_TB_SYSTEM_CONTAINER_OPTION_V1.md) | **Start here** — the step-by-step installation guide |
 | `docker/` | one folder per stack (compose file, `.env.example`, `deploy.sh`, config templates); sent to `<your folder>/tbApps` on the server |
-| `scripts/` | `00-push-to-server.sh` (runs on your workstation) and `01`–`06` (run on the server: Docker, volumes, secrets, restore, backup, health check) |
+| `scripts_v1/` | `00-push-to-server.sh` (runs on your workstation) and `01`–`06` (run on the server: Docker, volumes, secrets, restore, backup, health check) |
 | `seed/` | demo seed data for a first start (no real users) |
 | [`VERSION.md`](VERSION.md) | the image tags this release was tested with |
 | [`WELCOME_EMAIL_CONTAINER_OPTION.md`](WELCOME_EMAIL_CONTAINER_OPTION.md) | the getting-started email Timebars Ltd. sends with this package (template) |
@@ -24,7 +24,7 @@ the installation from there:
 
 ```bash
 git clone https://github.com/jimecox2/tbown.git ~/tbown && cd ~/tbown
-bash scripts/00-push-to-server.sh myserver      # sends the stacks, scripts and seed to <your folder>/tbApps on the server
+bash scripts_v1/00-push-to-server.sh myserver      # sends the stacks, scripts and seed to <your folder>/tbApps on the server
 ssh myserver                                    # every further step runs on the server, as the guide says
 ```
 
@@ -36,7 +36,7 @@ this repository or on your workstation.
 ## Not in here
 
 - **The application images** — pulled from Docker Hub (`jimecox807/tbrun`, `tbbe`, `tbwwwp`, `tbhelpapp`).
-- **Your settings** — one file, `tbapps.conf` (addresses, keys and passwords made on the server), made by `scripts/03-config.sh` and ignored by git.
+- **Your settings** — one file, `tbapps.conf` (addresses, keys and passwords made on the server), made by `scripts_v1/03-config.sh` and ignored by git.
 - **Decision documents** — see *Customer Ownership and Installation Options* and the
   *Administrators Guide* (in the Timebars help documentation).
 

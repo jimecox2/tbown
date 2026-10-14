@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# deploy.sh — tbhelp stack (container tbhelpapp). Same steps as every stack: ../scripts/deploy-common.sh
+# deploy.sh — tbhelp stack (container tbhelpapp). Same steps as every stack: ../scripts_v1/deploy-common.sh
 cd "$(dirname "$0")" || exit 1
 STACK_IMAGE=jimecox807/tbhelpapp
 STACK_TAG_VAR=HELPAPP_TAG
@@ -15,4 +15,4 @@ stack_after() {
   esac
 }
 
-. ../scripts/deploy-common.sh
+. ../scripts_v1/deploy-common.sh
