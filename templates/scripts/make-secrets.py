@@ -3,9 +3,9 @@
 
 Reads ../secrets.env (this environment folder), makes every EMPTY password with a strong random value
 (the first time only - a value once made is never changed), saves it back, and writes each stack's
-.secrets.env (chmod 600) from it. deploy-all.sh runs it first; run it yourself after you paste a key:
+.secrets.env (chmod 600) from it. Run it through 03-make-passwords.sh (deploy-all.sh does), and again after you paste a key:
 
-    python3 scripts/make-secrets.py            (in the environment folder, e.g. envs/PROD)
+    bash $TB/scripts/03-make-passwords.sh
 
 Passwords are made on the machine that runs this, so with the recommended hand-over they never leave
 the server. Never change a database password here after the first deploy: the database keeps the old one.
@@ -67,11 +67,11 @@ def template(env, vals):
     """The secrets.env layout; scripts/apply.sh on the dev box writes it the same way (empty passwords)."""
     out = [f"# secrets.env - keys and passwords of the {env} environment. chmod 600.",
            "# Never in git, never in email. Keep a copy in your password vault.",
-           "# After a change: python3 scripts/make-secrets.py && ./deploy-all.sh",
+           "# After a change: bash scripts/03-make-passwords.sh && ./deploy-all.sh",
            "", "# === Keys you paste (empty = that feature is off) ==="]
     for k, c in KEYS:
         out += [f"# {c}", f"{k}={vals.get(k, '')}"]
-    out += ["", "# === Passwords: made by scripts/make-secrets.py where this environment runs, the first time ===",
+    out += ["", "# === Passwords: made by scripts/03-make-passwords.sh where this environment runs, the first time ===",
             "# Leave them empty here. Never change one after the first deploy."]
     out += [f"{k}={vals.get(k, '')}" for k in PASSWORDS]
     return "\n".join(out) + "\n"

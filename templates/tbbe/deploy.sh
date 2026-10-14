@@ -16,7 +16,7 @@ stack_check() {
   docker inspect -f '{{.State.Status}}' tbpgdb 2>/dev/null | grep -q running || { echo "Start the database first: cd ../postgres && ./deploy.sh"; return 1; }
 }
 stack_after() {
-  local code; code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:1337/_health)
+  local code; code=$(curl -s -o /dev/null -w '%{http_code}' http://$LISTEN_IP:1337/_health)
   [ "$code" = 204 ] && echo "  Strapi /_health answers 204" || echo "  WARNING: Strapi /_health answered $code"
 }
 

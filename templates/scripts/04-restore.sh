@@ -1,22 +1,28 @@
 #!/usr/bin/env bash
-# restore.sh — load a Strapi database dump (and its uploads) into this environment.
-# Used for the seed data (deploy-all.sh runs it on the first deploy) and for your own backups (backup.sh).
-#   bash scripts/restore.sh                         (the seed: seed/seed.dump + seed/seed-uploads.tar.gz)
-#   bash scripts/restore.sh <dump> [uploads.tar.gz] (a backup made by backup.sh)
+# 04-restore.sh — load a Strapi database dump (and its uploads) into this environment.
+# Used for the seed data on the first deploy (after tbbe is up; deploy-all.sh runs it for you) and for
+# your own backups (05-backup.sh). In the environment folder ($TB), as your admin user:
+#   bash scripts/04-restore.sh                         (the seed: seed/seed.dump + seed/seed-uploads.tar.gz)
+#   bash scripts/04-restore.sh <dump> [uploads.tar.gz] (a backup made by 05-backup.sh)
 # Replaces everything in the Strapi database. Strapi is stopped during the restore.
 set -euo pipefail
 ROOT="${3:-$(cd "$(dirname "$0")/.." && pwd)}"   # the environment folder this script lives in
 DUMP="${1:-$ROOT/seed/seed.dump}"
 UPLOADS="${2:-}"
-[ -z "$UPLOADS" ] && [ -z "${1:-}" ] && UPLOADS="$ROOT/seed/seed-uploads.tar.gz"
+SEED=0
+[ -z "${1:-}" ] && SEED=1
+[ -z "$UPLOADS" ] && [ "$SEED" = 1 ] && UPLOADS="$ROOT/seed/seed-uploads.tar.gz"
 [ "$(id -u)" -ne 0 ] || { echo "Run this WITHOUT sudo, as your admin user."; exit 1; }
-docker info >/dev/null 2>&1 || { echo "Cannot use Docker as $USER. Log out and back in after scripts/install-docker.sh (id -nG must list docker)."; exit 1; }
+docker info >/dev/null 2>&1 || { echo "Cannot use Docker as $USER. Log out and back in after scripts/01-install-docker.sh (id -nG must list docker)."; exit 1; }
 set -a; . "$ROOT/postgres/.env.local"; set +a
 
 [ -f "$DUMP" ] || { echo "No such file: $DUMP"; exit 1; }
 [ "$(stat -c %s "$DUMP")" -gt 100000 ] || { echo "$DUMP is only $(stat -c %s "$DUMP") bytes - not a database dump. Make it again."; exit 1; }
 head -c 5 "$DUMP" | grep -q PGDMP || { echo "$DUMP is not a pg_dump custom-format file (made with pg_dump -Fc)."; exit 1; }
 if [ -f "$(dirname "$DUMP")/SHA256SUMS" ]; then (cd "$(dirname "$DUMP")" && sha256sum -c --ignore-missing SHA256SUMS); fi
+
+# .seeding marks a seed load that has not finished (deploy-all.sh loads it again); .seeded, one that did
+[ "$SEED" = 1 ] && touch "$ROOT/.seeding"
 
 echo "== Stopping Strapi"
 (cd "$ROOT/tbbe" && docker compose stop)
@@ -63,4 +69,5 @@ docker exec tbpgdb psql -U "$POSTGRES_USER" -d "$STRAPI_DB_NAME" -q -c "ANALYZE"
 
 echo "== Starting Strapi"
 (cd "$ROOT/tbbe" && docker compose start)
+[ "$SEED" = 1 ] && date -Is > "$ROOT/.seeded" && rm -f "$ROOT/.seeding"
 echo "Done. Watch Strapi start: docker logs -f tbbe"

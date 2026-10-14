@@ -9,10 +9,11 @@ Run it through scripts/apply.sh, on the dev box, in your clone of tbown:
                                         .secrets.env and .env, uploaded files. Your hand edits in the
                                         generated files are replaced.
 
-Each envs/<ENV> folder holds everything that environment needs: the stack folders with their settings
-(.env.local, runtime-config.json, Caddyfile), secrets.env (keys; passwords are made where it runs), the
-seed data, the scripts, and DEPLOY.md (its names, DNS records, proxy routes and steps). Open and check
-them in VS Code; small changes (find and replace) need no new apply.
+Each envs/<ENV> folder is the package for that environment's server: the stack folders with their settings
+(.env.local, runtime-config.json, Caddyfile), secrets.env (keys; passwords are made on the server), the
+seed data, the numbered scripts, deploy-all.sh, 00-push-to-server.sh, and DEPLOY.md (its names for the DNS
+team, the routes for your own proxy, and the steps). Open and check them in VS Code; small changes (find
+and replace) need no new apply.
 """
 import json
 import os
@@ -34,8 +35,9 @@ _spec.loader.exec_module(tbsecrets)
 PRODUCTS = ("AB", "TB", "CB")
 NAMES = [("APP_AB_HOST", "agile", "Agilebars"), ("APP_TB_HOST", "pmrm", "Timebars"), ("APP_CB_HOST", "ppm", "Costbars"),
          ("BACKEND_HOST", "be2", "Strapi backend"), ("WEBSITE_HOST", "www", "Website"), ("CLOUD_HOST", "cloud", "Timebars Cloud")]
-SETTINGS = ["DOMAIN", "ACME_EMAIL", "EMAIL_FROM", "EMAIL_REPLY_TO", "APP_OFFLINE", "EXTRA_CORS_ORIGINS", "OP_URL",
-            "SERVER_IP", "PROXY", "TLS", "NAME_SUFFIX", "EXTRA_APP_HOSTS"] + [k for k, _, _ in NAMES]
+HOSTS = [k for k, _, _ in NAMES]
+SETTINGS = ["ACME_EMAIL", "EMAIL_FROM", "EMAIL_REPLY_TO", "APP_OFFLINE", "EXTRA_CORS_ORIGINS", "OP_URL",
+            "SERVER_IP", "PROXY", "TLS", "LISTEN_IP"] + HOSTS
 KEYS = [k for k, _ in tbsecrets.KEYS]
 FIXED = {"POSTGRES_USER": "pgsuper", "STRAPI_DB_NAME": "strapi", "STRAPI_DB_USER": "strapi",
          "PGADMIN_DEFAULT_EMAIL": "admin@example.com"}
@@ -91,6 +93,9 @@ def resolve(env, sections):
     for k, val in c.items():
         if k not in SETTINGS and k not in KEYS:
             warns.append(f"{k} is not a known setting - ignored")
+    for k in HOSTS:
+        if k in sections["ALL"]:
+            errs.append(f"{k} is in [ALL]: each environment has its own names - put it in [{env}] only")
     for k in SETTINGS + KEYS:
         v[k] = c.get(k, "").strip()
     v["ENVIRONMENT"] = env
@@ -103,35 +108,27 @@ def resolve(env, sections):
         errs.append("TLS must be letsencrypt or internal")
     if v["APP_OFFLINE"] not in ("yes", "no"):
         errs.append("APP_OFFLINE must be yes or no")
-    domain = clean_host(v["DOMAIN"])
-    sfx = v["NAME_SUFFIX"].lower()
-    if sfx and not re.match(r"^[a-z0-9-]+$", sfx):
-        errs.append(f"NAME_SUFFIX '{sfx}': letters, digits or - only")
     hosts = {}
     for k, base, _ in NAMES:
-        h = clean_host(v[k]) if v[k] else (f"{base}{sfx}.{domain}" if domain else "")
+        h = clean_host(v[k])
         if not h:
-            errs.append(f"{k}: set DOMAIN in [ALL], or {k} in [{env}]")
+            errs.append(f"{k} is empty: type this environment's name, e.g. {k}={base}.{env.lower()}.example.com")
             continue
         if not HOST_RE.match(h):
-            errs.append(f"{k}: '{h}' is not a hostname like pmrm.example.com")
+            errs.append(f"{k}: '{h}' is not a hostname like {base}.example.com")
         v[k] = h
         hosts.setdefault(h, []).append(k)
-    extras = []
-    for item in v["EXTRA_APP_HOSTS"].replace(",", " ").split():
-        h, _, p = item.rpartition(":")
-        h, p = clean_host(h), p.upper()
-        if p not in PRODUCTS or not HOST_RE.match(h):
-            errs.append(f"EXTRA_APP_HOSTS: '{item}' must be host:AB, host:TB or host:CB")
-            continue
-        extras.append((h, p))
-        hosts.setdefault(h, []).append("EXTRA_APP_HOSTS")
-    v["_extras"] = extras
     for h, keys in hosts.items():
         if len(keys) > 1:
             errs.append(f"{h} is used twice ({', '.join(keys)})")
     if v["SERVER_IP"] and not IP_RE.match(v["SERVER_IP"]):
         errs.append(f"SERVER_IP '{v['SERVER_IP']}' is not an IPv4 address like 203.0.113.10")
+    if v["LISTEN_IP"] and not IP_RE.match(v["LISTEN_IP"]):
+        errs.append(f"LISTEN_IP '{v['LISTEN_IP']}' is not an IPv4 address like 10.0.0.5")
+    if v["LISTEN_IP"] and v["PROXY"] == "caddy":
+        warns.append("LISTEN_IP is only used with PROXY=own - ignored")
+        v["LISTEN_IP"] = ""
+    v["LISTEN_IP"] = v["LISTEN_IP"] or "127.0.0.1"
     if not v["SERVER_IP"]:
         warns.append("SERVER_IP is empty: DEPLOY.md shows <server IP> in the DNS records - fill it in later")
     for k in ("EMAIL_FROM", "EMAIL_REPLY_TO", "ACME_EMAIL"):
@@ -142,7 +139,7 @@ def resolve(env, sections):
     if v["OP_URL"] and not v["OP_URL"].startswith("http"):
         errs.append("OP_URL must start with https://")
     for k in SETTINGS + KEYS:
-        if k != "EXTRA_APP_HOSTS" and re.search(r"\s", v[k]):
+        if re.search(r"\s", v[k]):
             errs.append(f"{k} contains a space")
     return errs, warns, v
 
@@ -154,7 +151,7 @@ def render(v):
     https = lambda h: f"https://{h}"
     be, www, cloud = https(v["BACKEND_HOST"]), https(v["WEBSITE_HOST"]), https(v["CLOUD_HOST"])
     run = {p: https(v[f"APP_{p}_HOST"]) for p in PRODUCTS}
-    origins = [run[p] for p in PRODUCTS] + [https(h) for h, _ in v["_extras"]] + [www, cloud, be]
+    origins = [run[p] for p in PRODUCTS] + [www, cloud, be]
     origins += [o.strip() for o in v["EXTRA_CORS_ORIGINS"].split(",") if o.strip()]
     cors = list(dict.fromkeys(origins))
     env = {
@@ -172,7 +169,6 @@ def render(v):
     }
     offline = v["APP_OFFLINE"] == "yes"
     sites = [{"host": v[f"APP_{p}_HOST"], "product": p, "offline": offline} for p in PRODUCTS]
-    sites += [{"host": h, "product": p, "offline": False} for h, p in v["_extras"]]
     runtime = {"apiUrl": f"{be}/api", "wwwUrl": www, "cloudUrl": cloud, "opUrl": v["OP_URL"], "aiBaseUrl": "/ai",
                "sites": sites, "productPublicHost": {p: v[f"APP_{p}_HOST"] for p in PRODUCTS}}
     return env, runtime
@@ -181,7 +177,6 @@ def render(v):
 def routes(v):
     """Every public name: (name, what it is, stack)."""
     rows = [(v[f"APP_{p}_HOST"], label, "tbrun") for (k, _, label), p in zip(NAMES[:3], PRODUCTS)]
-    rows += [(h, f"extra app name ({p})", "tbrun") for h, p in v["_extras"]]
     rows += [(v["BACKEND_HOST"], "Strapi backend", "tbbe"), (v["WEBSITE_HOST"], "Website", "tbwww"),
              (v["CLOUD_HOST"], "Timebars Cloud", "tbhelp")]
     return rows
@@ -229,17 +224,20 @@ def caddy_text(v):
 
 def environment_text(v):
     lines = [f"# environment.env - what this folder is. {GENERATED_NOTE}.",
-             f"ENVIRONMENT={v['ENVIRONMENT']}", f"PROXY={v['PROXY']}", f"TLS={v['TLS']}", f"SERVER_IP={v['SERVER_IP']}"]
+             f"ENVIRONMENT={v['ENVIRONMENT']}", f"PROXY={v['PROXY']}", f"TLS={v['TLS']}", f"SERVER_IP={v['SERVER_IP']}",
+             f"LISTEN_IP={v['LISTEN_IP']}"]
     lines += [f"{k}={v[k]}" for k, _, _ in NAMES]
     return "\n".join(lines) + "\n"
 
 
 def deploy_md(v):
     env, ip = v["ENVIRONMENT"], v["SERVER_IP"] or "<server IP>"
+    if v["PROXY"] == "own":
+        ip = "<your proxy IP>"  # the names point at the customer's proxy, which passes them on to this server
     rows = routes(v)
     out = [f"# {env} environment", "", f"*{GENERATED_NOTE}. Full steps: `DEPLOY_TB_SYSTEM_CONTAINER_OPTION_V2.md` in the tbown repo.*", "",
            f"Proxy: **{'Caddy (container tbproxy on this machine)' if v['PROXY'] == 'caddy' else 'your own'}** · "
-           f"Certificates: **{'Let' + chr(39) + 's Encrypt' if v['TLS'] == 'letsencrypt' else 'Caddy internal'}** · Server: **{ip}**", "",
+           f"Certificates: **{'on your proxy' if v['PROXY'] == 'own' else 'Let' + chr(39) + 's Encrypt' if v['TLS'] == 'letsencrypt' else 'Caddy internal'}** · Server: **{v['SERVER_IP'] or '<server IP>'}**", "",
            "## 1. Names - give this to your DNS team", "",
            "One A record per name, pointing at the proxy" + (" (this server)" if v["PROXY"] == "caddy" else "") + ":", "",
            "| Name | What | A record |", "|---|---|---|"]
@@ -254,18 +252,34 @@ def deploy_md(v):
                 "trust it on every browser machine (guide: trusting Caddy's certificate).", ""]
     out += ["## 2. Routes - only if you use your own proxy", "",
             "HTTPS on your proxy for each name, passed on over HTTP. Keep the `Host` header; send `X-Forwarded-Proto: https`.", "",
-            "| Name | Proxy on this server | Proxy as a container on network `tbnet` |", "|---|---|---|"]
-    out += [f"| `{h}` | `http://{TARGETS[s][1]}` | `http://{TARGETS[s][0]}` |" for h, _, s in rows]
+            ("Your proxy runs on another machine: it reaches this server on " + v["LISTEN_IP"] + " (LISTEN_IP). Allow only the proxy to reach those ports." if v["LISTEN_IP"] != "127.0.0.1" else
+             "Your proxy runs on another machine? Set LISTEN_IP in tbapps.conf to this server's address that the proxy reaches, and apply again."), "",
+            "| Name | Proxy reaches | Proxy as a container on this server, network `tbnet` |", "|---|---|---|"]
+    out += [f"| `{h}` | `http://{TARGETS[s][1].replace('127.0.0.1', v['LISTEN_IP'])}` | `http://{TARGETS[s][0]}` |" for h, _, s in rows]
     out += ["", "Do not cache `/index.html`, `/sw.js` or `/runtime-config.json`. `proxy/Caddyfile` shows the same routes.", "",
-            "## 3. Deploy", "", "On the dev box (this folder is in `envs/`), copy it to the server - or hand it over (`./push.sh --tar`):",
-            "```bash", f"./push.sh <server> /srv/timebars/{env}", "```",
-            "On the machine it runs on, in this folder, as your admin user (no sudo):", "```bash",
-            "sudo bash scripts/install-docker.sh      # once per machine, then log out and in",
-            "docker login -u <Docker Hub user>        # once per machine, read-only token",
-            "nano secrets.env                         # paste the keys (Gemini, SendGrid, Stripe) - passwords are made for you",
-            "./deploy-all.sh", "```",
-            "Then: `bash scripts/check-urls.sh`, the Strapi admin password and API token (guide), and the nightly backup:",
-            "```bash", "crontab -e", f"# 15 2 * * * /bin/bash /srv/timebars/{env}/scripts/backup.sh >> $HOME/backups/timebars/backup.log 2>&1", "```", ""]
+            "## 3. Deploy - one environment at a time, tested before the next", "",
+            "On the dev box, in the tbown clone: copy this package to the server (it lands in `<parent>/tbApps` and sets `$TB` there). "
+            "No SSH to the server for you? `--tar` makes a file to hand over instead.", "",
+            "```bash", f"bash envs/{env}/00-push-to-server.sh <server> /docker/compose", "```", "",
+            "On the server (`ssh <server>`), as your admin user:", "", "```bash",
+            "sudo bash $TB/scripts/01-install-docker.sh   # once per server, then log out and in",
+            "docker login -u <Docker Hub user>            # once per server, read-only token",
+            "bash $TB/scripts/02-create-volumes.sh        # network tbnet, database volumes",
+            "nano $TB/secrets.env                         # paste the keys: Gemini, SendGrid, Stripe",
+            "bash $TB/scripts/03-make-passwords.sh        # makes the passwords here, on the server",
+            "cd $TB/postgres && ./deploy.sh               # Enter = the tag in VERSION.md",
+            "cd $TB/tbbe && ./deploy.sh",
+            "bash $TB/scripts/04-restore.sh               # the seed data",
+            "cd $TB/tbwww && ./deploy.sh",
+            "cd $TB/tbhelp && ./deploy.sh",
+            "cd $TB/tbrun && ./deploy.sh"]
+    out += ["cd $TB/proxy && ./deploy.sh                  # Caddy: certificates for every name"] if v["PROXY"] == "caddy" else \
+           ["# PROXY=own: no Caddy here - your proxy team adds the routes in section 2"]
+    out += ["bash $TB/scripts/06-health-check.sh", "bash $TB/scripts/07-check-urls.sh          # every name, through the proxy", "```", "",
+            "Shortcut: after `docker login`, `cd $TB && ./deploy-all.sh` runs 02 to 06 in one go (it pastes no keys: do `nano $TB/secrets.env` first).", "",
+            "Then the Strapi admin password and API token (guide), and the nightly backup:", "",
+            "```bash", "crontab -e",
+            "# 15 2 * * * /bin/bash <the $TB folder>/scripts/05-backup.sh >> $HOME/backups/timebars/backup.log 2>&1", "```", ""]
     return "\n".join(out)
 
 
@@ -300,14 +314,17 @@ def make(v, force):
     for stack, pairs in stacks.items():
         write(os.path.join(d, stack, ".env.local"), env_text(stack, pairs), 0o600)
     write(os.path.join(d, "tbrun", "runtime-config.json"), runtime_text(rt))
+    if v["LISTEN_IP"] != "127.0.0.1":  # PROXY=own on another machine: the apps listen where it reaches them
+        for stack in TARGETS:
+            f = os.path.join(d, stack, "docker-compose.yml")
+            text = open(f).read().replace('"127.0.0.1:', f'"{v["LISTEN_IP"]}:')
+            write(f, text)
     write(os.path.join(d, "proxy", "Caddyfile"), caddy_text(v))
     write(os.path.join(d, "environment.env"), environment_text(v))
     write(os.path.join(d, "DEPLOY.md"), deploy_md(v))
     sp = os.path.join(d, "secrets.env")
     if not os.path.exists(sp):
         write(sp, tbsecrets.template(env, {k: v[k] for k in KEYS if v[k]}), 0o600)
-    for f in ("deploy-all.sh", "push.sh"):
-        os.chmod(os.path.join(d, f), 0o755)
     for root, _, files in os.walk(d):
         for f in files:
             if f.endswith(".sh"):
@@ -335,7 +352,7 @@ def main(argv):
     if unknown:
         say(f"--force {' '.join(unknown)}: no such section in tbapps.conf ({', '.join(order)})")
         return 1
-    resolved, bad = {}, False
+    resolved, bad, seen = {}, False, {}
     for env in order:
         errs, warns, v = resolve(env, sections)
         say(f"[{env}]  {v['APP_TB_HOST'] or '?'} ...  proxy {v['PROXY']}, TLS {v['TLS']}, server {v['SERVER_IP'] or '?'}")
@@ -343,6 +360,11 @@ def main(argv):
             say(f"    note: {w}")
         for e in errs:
             say(f"    FIX:  {e}")
+        for k in HOSTS:
+            if v[k] in seen and seen[v[k]] != env:
+                say(f"    FIX:  {k}={v[k]} is also a name of [{seen[v[k]]}] - each environment needs its own names")
+                bad = True
+            seen.setdefault(v[k], env)
         bad = bad or bool(errs)
         resolved[env] = v
     if bad:
@@ -365,7 +387,7 @@ def main(argv):
     if check_only:
         say("\n(check only: nothing written)")
     elif made:
-        say("\nNext: open envs/<ENV>/DEPLOY.md - the names for your DNS team, the routes, and the deploy steps.")
+        say("\nNext: open envs/<ENV>/DEPLOY.md - the names for your DNS team, the routes for your own proxy, and the steps.")
     return 0
 
 

@@ -8,7 +8,7 @@ STACK_REQUIRED="STRAPI_URL NEXTAUTH_SECRET NEXTAUTH_URL"     # GEMINI_API_KEY em
 
 stack_after() {
   local code
-  code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:3010/api/ai/help)
+  code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{}' http://$LISTEN_IP:3010/api/ai/help)
   case "$code" in
     401|400) echo "  AI routes answer $code to an empty request, as expected" ;;
     *)       echo "  WARNING: /api/ai/help answered $code - docker logs tbhelpapp" ;;

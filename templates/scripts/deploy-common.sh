@@ -4,7 +4,7 @@
 #
 #   1. refuses sudo, checks Docker access
 #   2. checks .env.local (settings, from apply) and .secrets.env (keys and passwords, made by
-#      scripts/make-secrets.py where this runs): both exist, chmod 600, required values filled in
+#      scripts/03-make-passwords.sh where this runs): both exist, chmod 600, required values filled in
 #   3. creates the shared network tbnet if it is missing
 #   4. the image tag: asks (Enter = the deployed one, or the one in VERSION.md); never "latest".
 #      TB_AUTO=1 (deploy-all.sh) takes the tag in VERSION.md without asking.
@@ -23,15 +23,17 @@
 #   stack_after          extra checks after the container is healthy
 
 set -uo pipefail
+# where the apps listen: 127.0.0.1, or LISTEN_IP (PROXY=own, proxy on another machine)
+LISTEN_IP=$(grep -s '^LISTEN_IP=' ../environment.env | cut -d= -f2-); LISTEN_IP=${LISTEN_IP:-127.0.0.1}
 die() { echo "$*" >&2; exit 1; }
 
 [ "$(id -u)" -ne 0 ] || die "Run ./deploy.sh WITHOUT sudo, as your admin user."
-docker info >/dev/null 2>&1 || die "Cannot use Docker as $USER (id -nG must list docker; log out and in after scripts/install-docker.sh)."
+docker info >/dev/null 2>&1 || die "Cannot use Docker as $USER (id -nG must list docker; log out and in after scripts/01-install-docker.sh)."
 
 # --- 2. settings ------------------------------------------------------------------------------
 if [ "${STACK_NO_ENV_LOCAL:-}" != 1 ]; then
   [ -f .env.local ] || die "Missing .env.local - this environment folder is incomplete: run scripts/apply.sh on the dev box again (--force)."
-  [ -f .secrets.env ] || die "Missing .secrets.env - run ../deploy-all.sh (it makes it from ../secrets.env), or: python3 ../scripts/make-secrets.py"
+  [ -f .secrets.env ] || die "Missing .secrets.env - run ../deploy-all.sh (it makes it from ../secrets.env), or: bash ../scripts/03-make-passwords.sh"
   for f in .env.local .secrets.env; do
     if [ "$(stat -c %a $f)" != 600 ]; then chmod 600 $f && echo "Set $f to chmod 600."; fi
   done

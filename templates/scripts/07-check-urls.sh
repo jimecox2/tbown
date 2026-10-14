@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# check-urls.sh — check every public address of this environment from the outside, through the proxy.
+# 07-check-urls.sh — check every public address of this environment from the outside, through the proxy.
 # Read-only. Run it from any machine that resolves the names (DNS or hosts file): the addresses come from
 # this environment's settings (tbrun/runtime-config.json, tbbe/tbwww/tbhelp .env.local), nothing to type.
-#   bash scripts/check-urls.sh                       # in the environment folder
-#   bash scripts/check-urls.sh ab.example.com        # plus app hosts not in runtime-config.json
-# TLS=internal: the browser machine must trust Caddy's root certificate, or add -k:  CURL_OPTS=-k bash scripts/check-urls.sh
+#   bash scripts/07-check-urls.sh                       # in the environment folder
+#   bash scripts/07-check-urls.sh ab.example.com        # plus app hosts not in runtime-config.json
+# TLS=internal: the browser machine must trust Caddy's root certificate, or add -k:  CURL_OPTS=-k bash scripts/07-check-urls.sh
 ROOT="${ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"   # the environment folder this script lives in
 FAIL=0
 ok()   { printf '  \033[32mOK\033[0m    %s\n' "$1"; }
@@ -15,7 +15,7 @@ code() { curl ${CURL_OPTS:-} -s -o /dev/null -m 20 -w '%{http_code}' "$@"; }
 hint() {
   case "$1" in
     000) echo "no answer - the name does not point at the proxy (DNS or hosts file), the proxy is down, ports 80/443 closed, or the certificate is not trusted" ;;
-    502|503|504) echo "the proxy answers but the container does not - docker ps, scripts/health-check.sh" ;;
+    502|503|504) echo "the proxy answers but the container does not - docker ps, scripts/06-health-check.sh" ;;
     *) echo "unexpected answer" ;;
   esac
 }

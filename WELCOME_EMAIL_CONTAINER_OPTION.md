@@ -1,7 +1,6 @@
 # Welcome email — Container option
 
-*Template for Timebars Ltd. Fill in the `«…»` fields, send it to the customer's technical contact,
-and send the items under "Sent to you separately" by phone or another channel — never in this email.*
+*Template for Timebars Ltd. Fill in the `«…»` fields, send it to the customer's technical contact, and send the items under "Sent to you separately" by phone or another channel, never in this email.*
 
 ---
 
@@ -9,8 +8,7 @@ and send the items under "Sent to you separately" by phone or another channel �
 
 Hello «Name»,
 
-Thank you for choosing the Timebars container option. This email has what you need to stand up
-Agilebars, Timebars and Costbars in your own environments (for example DEV, STAGING, PROD and TRAINING).
+Thank you for choosing the Timebars container option. This email has what you need to stand up Agilebars, Timebars and Costbars in your own environments (for example DEV, STAGING, PROD and TRAINING), each on its own server.
 
 ## 1. What you have
 
@@ -24,28 +22,23 @@ Your release: **«package release, e.g. v2.0.0»**. The image tags are in `VERSI
 
 ## 2. Before you start
 
-1. **Docker Hub:** create a Docker Hub account and a **read-only access token**, and **reply with your
-   Docker Hub user name** — we grant it pull access.
-2. **A dev box:** an Ubuntu 24.04 or 26.04 machine with VS Code, 8 GB RAM and 100 GB disk. Your developer
-   configures every environment there and runs DEV on it.
-3. **A server per other environment:** Ubuntu 24.04 or 26.04, 2+ cores, 4 GB RAM, 100 GB disk, patched under
-   your policies, an admin user with `sudo` and SSH key login (guide section 1).
-4. **Names:** the guide makes six names per environment from your domain (e.g. `pmrm.example.com`,
-   `pmrms.example.com` for staging) and lists them for your DNS team. HTTPS comes from our proxy
-   container with free Let's Encrypt certificates, or from **your own proxy** — the guide gives its routes.
-   **Reply with your domain** so we confirm your names.
+1. **Docker Hub:** create a Docker Hub account and a **read-only access token**, and **reply with your Docker Hub user name**: we grant it pull access.
+2. **A dev box:** any Ubuntu machine with VS Code. Your developer configures every environment there; nothing runs on it.
+3. **A server per environment:** Ubuntu 24.04 or 26.04, 2+ cores, 4 GB RAM, 100 GB disk, patched under your policies, an admin user with `sudo` and SSH key login (guide section 2). Gather each server's IP address.
+4. **Names:** six per environment that you choose, for example `agile.prod.com`, `pmrm.prod.com`, `ppm.prod.com`, `be2.prod.com`, `www.prod.com`, `cloud.prod.com`. Your DNS team points them at the server. HTTPS comes from our proxy container with free Let's Encrypt certificates, or from **your own proxy**: the guide gives its routes. You can start before the IPs and DNS records exist.
 
 ## 3. The installation in brief
 
 | Step | What | Guide section |
 |---|---|---|
-| 1 | Clone the package on the dev box, open it in VS Code | 2 |
-| 2 | Fill in `tbapps.conf` (domain, environments), run `bash scripts/apply.sh` | 3 |
-| 3 | Send each environment's name list to your DNS team | 3 |
-| 4 | Deploy DEV on the dev box: `cd envs/DEV && ./deploy-all.sh`, and test it | 4, 5 |
-| 5 | Copy each other environment to its server, run `./deploy-all.sh` there | 6 |
+| 1 | Clone the package on the dev box and open it in VS Code | 3 |
+| 2 | Fill in `tbapps.conf` (a section per environment), run `bash scripts/apply.sh` | 4 |
+| 3 | Send each environment's name list to your DNS team | 4 |
+| 4 | Prepare the first server, send it its package with `00-push-to-server.sh` | 5, 6 |
+| 5 | On the server: the numbered scripts (or `./deploy-all.sh`), then check and finish | 7, 8 |
+| 6 | The next environment, once the first one is tested | 9 |
 
-Plan on half a day for DEV, and an hour for each further environment once its names point at it.
+Plan on half a day for the first environment, and an hour for each further one once its names point at its server.
 
 ## 4. Sent to you separately
 
@@ -67,18 +60,13 @@ By phone or another channel you choose — not by email:
 
 ## 6. Good to know
 
-- **Project data lives in each user's browser.** The app saves backup files and syncs to spreadsheets; those
-  files belong in your document management system. The servers hold accounts, licences and published data
-  — the nightly backup (guide section 10) protects that.
-- **Passwords are made on each server** the first time it is deployed, and never leave it. The folder your
-  developer hands over holds no password. Never send `secrets.env` files to anyone, including us.
-- **Updates:** we announce new image tags; your developer pulls the package update, makes the environment
-  folders again and redeploys (guide section 9).
+- **Project data lives in each user's browser.** The app saves backup files and syncs to spreadsheets; those files belong in your document management system. The servers hold accounts, licences and published data, and the nightly backup (guide section 13) protects that.
+- **Passwords are made on each server** the first time it is deployed, and never leave it. The package your developer sends holds no password. We recommend giving your developer temporary SSH access to send it; your process decides. Never send `secrets.env` files to anyone, including us.
+- **Updates:** we announce new image tags; your developer pulls the package update, makes the packages again and redeploys (guide section 12).
 
 ## 7. Help
 
-If a step does not go as written, send us the output of `bash scripts/health-check.sh` and
-`docker logs --tail 100 <container>` — never `secrets.env` files, tokens or passwords.
+If a step does not go as written, send us the output of `bash $TB/scripts/06-health-check.sh` and `docker logs --tail 100 <container>`, never `secrets.env` files, tokens or passwords.
 
 «Your name»
 Timebars Ltd. — jcox@tbcox.com — «phone»

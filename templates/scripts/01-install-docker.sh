@@ -2,7 +2,7 @@
 # 01-install-docker.sh — Docker Engine + Compose plugin from Docker's own apt repository
 # (falls back to Ubuntu's packages if Docker has no repository for this release yet).
 # Also: log rotation for all containers, and your user in the docker group.
-# Run once, on each machine (dev box and every server):   sudo bash scripts/install-docker.sh   then log out and in.
+# Run once on each server, in the environment folder:   sudo bash $TB/scripts/01-install-docker.sh   then log out and in.
 set -euo pipefail
 [ "$(id -u)" -eq 0 ] || { echo "Run with sudo."; exit 1; }
 ADMIN_USER="${SUDO_USER:-$USER}"

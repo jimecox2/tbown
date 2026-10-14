@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# backup.sh — nightly backup: Strapi database (pg_dump), Strapi uploads, and this environment's settings
+# 05-backup.sh — nightly backup: Strapi database (pg_dump), Strapi uploads, and this environment's settings
 # (secrets.env, environment.env, each stack's .env.local, .secrets.env and .env, runtime-config.json, Caddyfile).
 # Keeps KEEP_DAYS days. Copy the backup folder OFF this server too (your backup system).
-#   bash scripts/backup.sh [environment folder] [backup folder]
+#   bash scripts/05-backup.sh [environment folder] [backup folder]
 # Cron (crontab -e as your admin user), every night at 02:15:
-#   15 2 * * * /bin/bash <this environment folder>/scripts/backup.sh >> $HOME/backups/timebars/backup.log 2>&1
+#   15 2 * * * /bin/bash <this environment folder>/scripts/05-backup.sh >> $HOME/backups/timebars/backup.log 2>&1
 set -euo pipefail
 ROOT="${1:-$(cd "$(dirname "$0")/.." && pwd)}"   # the environment folder this script lives in
 DEST_ROOT="${2:-$HOME/backups/timebars}"
 KEEP_DAYS="${KEEP_DAYS:-14}"
 [ "$(id -u)" -ne 0 ] || { echo "Run this WITHOUT sudo, as your admin user."; exit 1; }
-docker info >/dev/null 2>&1 || { echo "Cannot use Docker as $USER. Log out and back in after scripts/install-docker.sh (id -nG must list docker)."; exit 1; }
+docker info >/dev/null 2>&1 || { echo "Cannot use Docker as $USER. Log out and back in after scripts/01-install-docker.sh (id -nG must list docker)."; exit 1; }
 set -a; . "$ROOT/postgres/.env.local"; set +a
 
 STAMP=$(date +%Y-%m-%d_%H%M)
