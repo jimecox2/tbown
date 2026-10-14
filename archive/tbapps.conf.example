@@ -1,0 +1,79 @@
+# tbapps.conf - every environment of your Timebars system, in one file, in your tbown clone on the dev box.
+# Make yours:   cp tbapps.conf.example tbapps.conf   (tbapps.conf is never committed to git)
+# Then:         bash scripts/apply.sh                (writes one package per environment: envs/DEV, envs/PROD ...)
+#
+# [ALL] holds what every environment shares. Each [SECTION] below is one environment, on its own server;
+# delete the ones you do not need, or add your own name (letters only). A section may repeat any [ALL]
+# setting to override it. Each section types its own six names (no two environments share a name).
+# Only the section named PROD is open to search engines; every other environment sends "noindex".
+# Plain KEY=VALUE lines; hostnames only (no https://, no / at the end); no comments after a value.
+
+[ALL]
+# Let's Encrypt sends certificate notices here (only with PROXY=caddy and TLS=letsencrypt)
+ACME_EMAIL=it@example.com
+# Sender of registration and password emails - a sender verified in SendGrid
+EMAIL_FROM=noreply@example.com
+# Replies go here (empty = EMAIL_FROM)
+EMAIL_REPLY_TO=
+# yes = Agilebars / Timebars / Costbars keep working offline after the first visit (needs trusted HTTPS)
+APP_OFFLINE=yes
+# Other browser origins Strapi accepts, besides this environment's own names
+EXTRA_CORS_ORIGINS=https://checkout.stripe.com,http://localhost:*
+# Optional: your OpenProject address, e.g. https://op.example.com
+OP_URL=
+# Keys: recommended is to leave them empty and paste them into secrets.env on each server (guide: keys
+# and passwords). Set here, they are copied into every environment's package.
+GEMINI_API_KEY=
+SENDGRID_API_KEY=
+
+# Each environment:
+#   SERVER_IP  its server's address, for the DNS list in DEPLOY.md - may stay empty until you have it
+#   PROXY      caddy = our Caddy container answers the names on the server; own = your proxy (you get its routes)
+#   TLS        letsencrypt = public names, ports 80/443 reachable from the internet;
+#              internal = Caddy's own certificates (trust its root certificate on each browser machine)
+#   LISTEN_IP  only with PROXY=own and your proxy on another machine: this server's address it reaches
+#   The six names: Agilebars, Timebars, Costbars (one app), Strapi backend, website, Timebars Cloud
+
+[DEV]
+SERVER_IP=
+PROXY=caddy
+TLS=letsencrypt
+APP_AB_HOST=agile.dev.com
+APP_TB_HOST=pmrm.dev.com
+APP_CB_HOST=ppm.dev.com
+BACKEND_HOST=be2.dev.com
+WEBSITE_HOST=www.dev.com
+CLOUD_HOST=cloud.dev.com
+
+[STAGING]
+SERVER_IP=
+PROXY=caddy
+TLS=letsencrypt
+APP_AB_HOST=agile.staging.com
+APP_TB_HOST=pmrm.staging.com
+APP_CB_HOST=ppm.staging.com
+BACKEND_HOST=be2.staging.com
+WEBSITE_HOST=www.staging.com
+CLOUD_HOST=cloud.staging.com
+
+[PROD]
+SERVER_IP=
+PROXY=caddy
+TLS=letsencrypt
+APP_AB_HOST=agile.prod.com
+APP_TB_HOST=pmrm.prod.com
+APP_CB_HOST=ppm.prod.com
+BACKEND_HOST=be2.prod.com
+WEBSITE_HOST=www.prod.com
+CLOUD_HOST=cloud.prod.com
+
+[TRAINING]
+SERVER_IP=
+PROXY=caddy
+TLS=letsencrypt
+APP_AB_HOST=agile.training.com
+APP_TB_HOST=pmrm.training.com
+APP_CB_HOST=ppm.training.com
+BACKEND_HOST=be2.training.com
+WEBSITE_HOST=www.training.com
+CLOUD_HOST=cloud.training.com
