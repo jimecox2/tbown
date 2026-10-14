@@ -3,6 +3,12 @@
 
 Run it through scripts_v1/03-config.sh:
   new     [file]   ask a few questions (domain, names) and write tbapps.conf - workstation or server
+                   (the Cloudflare tunnel method, guide section 8.1)
+  new-proxy [file] the same for the proxy method: Caddy on this server, Let's Encrypt certificates, one
+                   environment (PROD / STAGING / DEV / TRAINING) and its own domain (guide section 8.3);
+                   run it through scripts_v1/03-config-proxy.sh
+  dns     [IP]     proxy method: the DNS records to make at your registrar, and whether each name already
+                   points at this server (IP: the address they must point to; on DigitalOcean found itself)
   apply   [file]   on the server: check tbapps.conf, generate the passwords and keys that are made on
                    the server (first time only), write every stack's .env.local and tbrun's
                    runtime-config.json, and offer to recreate the containers whose settings changed
@@ -29,7 +35,7 @@ DEFAULT_CONF = os.path.join(ROOT, "tbapps.conf")
 PRODUCTS = ("AB", "TB", "CB")
 STACKS = ("postgres", "tbbe", "tbwww", "tbhelp", "cloudflared")
 CONTAINERS = {"postgres": "tbpgdb", "tbbe": "tbbe", "tbwww": "tbwwwp", "tbhelp": "tbhelpapp",
-              "cloudflared": "cloudflared", "tbrun": "tbrun"}
+              "cloudflared": "cloudflared", "tbrun": "tbrun", "proxy": "tbproxy"}
 
 # ---------------------------------------------------------------------------------------------------
 # The file layout. Parts 1-3 are yours; part 4 is filled on the server by apply.
@@ -61,7 +67,20 @@ PART3_FIXED = [("POSTGRES_USER", "pgsuper"), ("STRAPI_DB_NAME", "strapi"), ("STR
 PART3_SECRETS = ["POSTGRES_PASSWORD", "STRAPI_DB_PASSWORD", "PGADMIN_DEFAULT_PASSWORD", "APP_KEYS",
                  "API_TOKEN_SALT", "ADMIN_JWT_SECRET", "TRANSFER_TOKEN_SALT", "JWT_SECRET",
                  "WWW_NEXTAUTH_SECRET", "CLOUD_NEXTAUTH_SECRET"]
-ALL_KEYS = [k for k, *_ in PART1] + [k for k, _ in PART2] + [k for k, _ in PART3_FIXED] + PART3_SECRETS
+# The proxy method only (03-config-proxy.sh): Caddy on this server answers every address. These lines are
+# written to tbapps.conf only when PUBLIC_ACCESS=proxy, so a Cloudflare tunnel install's file is unchanged.
+PROXY_KEYS = [
+    ("PUBLIC_ACCESS", "proxy = Caddy on this server answers every address, with Let's Encrypt certificates (guide section 8.3)"),
+    ("ENVIRONMENT", "PROD, STAGING, DEV or TRAINING - shown by the checks and in backup names; not PROD = search engines kept out"),
+    ("ACME_EMAIL", "Let's Encrypt sends certificate notices to this address"),
+    ("BARE_DOMAIN", "this name redirects to the website, e.g. example.com -> www.example.com (empty = none)"),
+]
+ENVIRONMENTS = ("PROD", "STAGING", "DEV", "TRAINING")
+# Names Let's Encrypt cannot certify (not public DNS). Such addresses need your own proxy (guide section 8.2).
+PRIVATE_SUFFIXES = (".internal", ".local", ".lan", ".localhost", ".home.arpa", ".home", ".corp", ".test",
+                    ".example", ".invalid", ".intranet", ".private")
+ALL_KEYS = ([k for k, *_ in PART1] + [k for k, _ in PROXY_KEYS] + [k for k, _ in PART2]
+            + [k for k, _ in PART3_FIXED] + PART3_SECRETS)
 # Where each part-4 value already lives on a running server (stack, name in its .env.local). apply takes
 # a value missing from tbapps.conf from there before it generates a new one, so a lost or renamed
 # tbapps.conf never changes the passwords of an existing install.
@@ -144,6 +163,11 @@ def conf_text(v, domain_note=""):
     for k, _, c in PART1:
         out.append(f"# {c}")
         out.append(f"{k}={v.get(k, '')}")
+    if v.get("PUBLIC_ACCESS") == "proxy":
+        out += ["", "# --- the proxy on this server (03-config-proxy.sh) ---"]
+        for k, c in PROXY_KEYS:
+            out.append(f"# {c}")
+            out.append(f"{k}={v.get(k, '')}")
     out += ["", "# === 2. Keys you paste (leave empty what you do not use) ==="]
     for k, c in PART2:
         if c:
@@ -250,9 +274,41 @@ def check(c):
         warns.append("SENDGRID_API_KEY does not start with SG. - check it")
     if not v["STRAPI_ADMIN_TOKEN"]:
         warns.append("STRAPI_ADMIN_TOKEN is empty: fine until Strapi is up (guide section 15)")
-    if not v["TUNNEL_TOKEN"]:
+    access = v["PUBLIC_ACCESS"].lower() or "tunnel"
+    if access not in ("tunnel", "proxy"):
+        errs.append("PUBLIC_ACCESS must be proxy, or empty for the Cloudflare tunnel")
+    v["PUBLIC_ACCESS"] = access
+    if access == "proxy":
+        check_proxy(v, hosts, errs, warns)
+    elif not v["TUNNEL_TOKEN"]:
         warns.append("TUNNEL_TOKEN is empty: fine if this server uses its own proxy or an existing tunnel container")
     return errs, warns, v
+
+
+def check_proxy(v, hosts, errs, warns):
+    env = v["ENVIRONMENT"].upper() or "PROD"
+    if env not in ENVIRONMENTS:
+        errs.append(f"ENVIRONMENT must be one of {', '.join(ENVIRONMENTS)}")
+    v["ENVIRONMENT"] = env
+    if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", v["ACME_EMAIL"]):
+        errs.append("ACME_EMAIL: an email address is needed - Let's Encrypt sends certificate notices to it")
+    bare = clean_host(v["BARE_DOMAIN"])
+    if bare:
+        if not HOST_RE.match(bare):
+            errs.append(f"BARE_DOMAIN: '{v['BARE_DOMAIN']}' is not a domain like example.com")
+        hosts.setdefault(bare, []).append("BARE_DOMAIN")
+        if len(hosts[bare]) > 1:
+            errs.append(f"{bare} is used twice ({', '.join(hosts[bare])}) - every address needs its own name")
+    v["BARE_DOMAIN"] = bare
+    for h in hosts:
+        if h.endswith(PRIVATE_SUFFIXES):
+            errs.append(f"{h}: Let's Encrypt only certifies public DNS names - for internal names use your own "
+                        "proxy and certificates (guide section 8.2)")
+    if v["TUNNEL_TOKEN"]:
+        warns.append("TUNNEL_TOKEN is set but not used: this install answers through its own proxy")
+    if env != "PROD":
+        if v["STRIPE_SECRET_KEY"].startswith("sk_live_") or v["STRIPE_PUBLISHABLE_KEY"].startswith("pk_live_"):
+            warns.append(f"{env} server with a LIVE Stripe key - real cards would be charged; use the sk_test_ / pk_test_ keys")
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -302,6 +358,45 @@ def render(v):
     runtime = {"apiUrl": f"{be}/api", "wwwUrl": www, "cloudUrl": cloud, "opUrl": v["OP_URL"], "aiBaseUrl": "/ai",
                "sites": sites, "productPublicHost": {p: v[f"APP_{p}_HOST"] for p in PRODUCTS}}
     return out, runtime
+
+
+def proxy_hosts(v):
+    """Every name the proxy answers: (name, what it is, container:port or redirect target)."""
+    rows = [(v[f"APP_{p}_HOST"], {"AB": "Agilebars", "TB": "Timebars", "CB": "Costbars"}[p], "tbrun:80") for p in PRODUCTS]
+    rows += [(h, f"extra app address ({p})", "tbrun:80") for h, p in v["_extras"]]
+    rows += [(v["BACKEND_HOST"], "Strapi backend", "tbbe:1337"), (v["WEBSITE_HOST"], "Website", "tbwwwp:3001"),
+             (v["CLOUD_HOST"], "Timebars Cloud", "tbhelpapp:3010")]
+    if v["BARE_DOMAIN"]:
+        rows.append((v["BARE_DOMAIN"], f"redirects to {v['WEBSITE_HOST']}", f"https://{v['WEBSITE_HOST']}"))
+    return rows
+
+
+def caddy_text(v):
+    prod = v["ENVIRONMENT"] == "PROD"
+    t = ["# proxy/Caddyfile - GENERATED by 03-config.sh apply from ../tbapps.conf.",
+         "# Do not edit: change tbapps.conf, then run   bash $TB/scripts_v1/03-config.sh apply",
+         f"# Environment: {v['ENVIRONMENT']}. Caddy gets a Let's Encrypt certificate for every name below and renews it.",
+         "{", f"\temail {v['ACME_EMAIL']}", "}", "",
+         "(tb_common) {", "\theader -Server"]
+    if not prod:
+        t.append('\theader X-Robots-Tag "noindex, nofollow"')
+    t += ["}", ""]
+    rows = proxy_hosts(v)
+    apps = [h for h, _, target in rows if target == "tbrun:80"]
+    t += ["# Agilebars, Timebars, Costbars - one app; it picks the product from the name",
+          f"{', '.join(apps)} {{", "\timport tb_common", "\treverse_proxy tbrun:80", "}", ""]
+    for h, what, target in rows:
+        if target == "tbrun:80":
+            continue
+        t += [f"# {what}", f"{h} {{", "\timport tb_common"]
+        if target.startswith("https://"):
+            t.append(f"\tredir {target}{{uri}} permanent")
+        else:
+            if target.startswith("tbwwwp") and not prod:
+                t += ["\trespond /robots.txt <<TXT", "\t\tUser-agent: *", "\t\tDisallow: /", "\t\tTXT 200"]
+            t.append(f"\treverse_proxy {target}")
+        t += ["}", ""]
+    return "\n".join(t)
 
 
 def env_text(stack, pairs):
@@ -369,23 +464,31 @@ def set_db_passwords(superuser, roles):
 # ---------------------------------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------------------------------
+def start_again(path):
+    """An existing tbapps.conf: keep parts 2-4, save the old file. Returns the kept values, or None to stop."""
+    if not os.path.exists(path):
+        return {}
+    old = read_kv(path)
+    keep = {k: old[k] for k in [k for k, _ in PART3_FIXED] + PART3_SECRETS if old.get(k)}
+    keep.update({k: old[k] for k, _ in PART2 if old.get(k)})
+    keep.update({k: val for k, val in old.items() if EXTRA_RE.match(k)})
+    say(f"{path} already exists.")
+    say("Starting again keeps its passwords made on the server (part 4), your pasted keys (part 2) and part 3;")
+    say("you answer the address questions again. The old file is saved next to it.")
+    if not yes("Start again"):
+        say(f"Nothing changed. To edit it instead: nano {path}")
+        return None
+    import time
+    bak = f"{path}.{time.strftime('%Y%m%d-%H%M%S')}"
+    os.rename(path, bak)
+    say(f"Saved the old file as {bak}\n")
+    return keep
+
+
 def cmd_new(path):
-    keep = {}
-    if os.path.exists(path):
-        old = read_kv(path)
-        keep = {k: old[k] for k in [k for k, _ in PART3_FIXED] + PART3_SECRETS if old.get(k)}
-        keep.update({k: old[k] for k, _ in PART2 if old.get(k)})
-        keep.update({k: val for k, val in old.items() if EXTRA_RE.match(k)})
-        say(f"{path} already exists.")
-        say("Starting again keeps its passwords made on the server (part 4), your pasted keys (part 2) and part 3;")
-        say("you answer the address questions again. The old file is saved next to it.")
-        if not yes("Start again"):
-            say(f"Nothing changed. To edit it instead: nano {path}")
-            return 1
-        import time
-        bak = f"{path}.{time.strftime('%Y%m%d-%H%M%S')}"
-        os.rename(path, bak)
-        say(f"Saved the old file as {bak}\n")
+    keep = start_again(path)
+    if keep is None:
+        return 1
     say("New tbapps.conf: the addresses users will open. Press Enter to accept a suggestion.\n")
     domain = ask("Your domain, e.g. example.com").lower().strip().strip(".")
     domain = clean_host(domain)
@@ -421,6 +524,145 @@ def cmd_new(path):
     else:
         say("  2. On the server: nano $TB/tbapps.conf, paste the whole file, save (Ctrl+O, Enter, Ctrl+X).")
         say("  3. On the server: bash $TB/scripts_v1/03-config.sh apply")
+    return 0
+
+
+def choose(prompt, options, default):
+    while True:
+        ans = ask(f"{prompt} ({' / '.join(options)})", default).upper()
+        if ans in options:
+            return ans
+        say(f"  Type one of: {', '.join(options)}")
+
+
+def cmd_new_proxy(path):
+    keep = start_again(path)
+    if keep is None:
+        return 1
+    say("New tbapps.conf for the PROXY method: Caddy on this server answers every address and gets a free")
+    say("Let's Encrypt certificate for each. One server = one environment with its own domain. Every name must be")
+    say("a public DNS name pointing at this server - internal-only names (tb.company.internal) need your own proxy")
+    say("and certificates instead (guide section 8.2). Press Enter to accept a suggestion.\n")
+    env = choose("Environment of this server", ENVIRONMENTS, "PROD")
+    while True:
+        domain = clean_host(ask(f"Domain for the {env} environment, e.g. example.com or {env.lower()}.example.com").strip("."))
+        if not HOST_RE.match(domain):
+            say(f"  '{domain}' is not a domain like example.com")
+        elif domain.endswith(PRIVATE_SUFFIXES):
+            say(f"  {domain} is not a public DNS name - Let's Encrypt cannot certify it (guide section 8.2)")
+        else:
+            break
+    say("\nAddress names for the three apps:")
+    say(f"  1 = process names   agile.{domain}  pmrm.{domain}  ppm.{domain}")
+    say(f"  2 = initials        ab.{domain}  tb.{domain}  cb.{domain}")
+    style = ""
+    while style not in ("1", "2"):
+        style = ask("Which", "1")
+    apps = ("agile", "pmrm", "ppm") if style == "1" else ("ab", "tb", "cb")
+    names = {"APP_AB_HOST": apps[0], "APP_TB_HOST": apps[1], "APP_CB_HOST": apps[2],
+             "BACKEND_HOST": "be2", "WEBSITE_HOST": "www", "CLOUD_HOST": "cloud"}
+    v = {k: f"{n}.{domain}" for k, n in names.items()}
+    labels = {"APP_AB_HOST": "Agilebars", "APP_TB_HOST": "Timebars", "APP_CB_HOST": "Costbars",
+              "BACKEND_HOST": "Strapi backend", "WEBSITE_HOST": "Website", "CLOUD_HOST": "Timebars Cloud"}
+    say("\nProposed addresses:")
+    for k in names:
+        say(f"  {labels[k]:<16} {v[k]}")
+    say(f"  {'(redirect)':<16} {domain} -> {v['WEBSITE_HOST']}")
+    if not yes("\nUse these"):
+        for k in names:
+            v[k] = clean_host(ask(f"  {labels[k]}", v[k]))
+    v["APP_OFFLINE"] = "yes" if yes("Install the service worker, so the apps keep working offline after the first visit") else "no"
+    v["ACME_EMAIL"] = ask("Your email for Let's Encrypt certificate notices", f"admin@{domain}")
+    v["EMAIL_FROM"] = ask("Sender address for emails", f"noreply@{domain}")
+    v["EXTRA_CORS_ORIGINS"] = "https://checkout.stripe.com,http://localhost:*"
+    v.update({"PUBLIC_ACCESS": "proxy", "ENVIRONMENT": env,
+              "BARE_DOMAIN": "" if domain in v.values() else domain})
+    for k, val in PART3_FIXED:
+        v[k] = val
+    v.update(keep)
+    v["TUNNEL_TOKEN"] = ""            # not used by the proxy method
+    write_private(path, conf_text(v))
+    say(f"\nWritten: {path}")
+    if env != "PROD":
+        say(f"{env}: search engines are kept out of every address, and Stripe should use its test keys (sk_test_ / pk_test_).")
+    say("Next:")
+    say("  1. Open it in any text editor and paste your keys in part 2 (Gemini, SendGrid ...)" + (" - kept from before." if keep else "."))
+    step = 2
+    if not ON_SERVER:
+        say("  2. On the server: nano $TB/tbapps.conf, paste the whole file, save (Ctrl+O, Enter, Ctrl+X).")
+        step = 3
+    say(f"  {step}. On the server: bash $TB/scripts_v1/03-config.sh apply")
+    say(f"  {step + 1}. Make the DNS records it lists:  bash $TB/scripts_v1/03-config.sh dns   (guide section 8.3)")
+    return 0
+
+
+def public_ip():
+    """This server's public IPv4 on DigitalOcean: the Reserved IP when one is assigned, else the droplet's own."""
+    import urllib.request
+    base = "http://169.254.169.254/metadata/v1/"
+    def get(p):
+        try:
+            with urllib.request.urlopen(base + p, timeout=2) as r:
+                return r.read().decode().strip()
+        except Exception:
+            return ""
+    if get("reserved_ip/ipv4/active") == "true":
+        return get("reserved_ip/ipv4/ip_address")
+    return get("interfaces/public/0/ipv4/address")
+
+
+def cmd_dns(path, ip):
+    import socket
+    if not os.path.isfile(path):
+        say(f"No {path} - make it first: bash $TB/scripts_v1/03-config-proxy.sh")
+        return 1
+    errs, _, v = check(read_kv(path))
+    if errs:
+        say("Fix tbapps.conf first (03-config.sh check shows what).")
+        return 1
+    if v["PUBLIC_ACCESS"] != "proxy":
+        say("This install uses the Cloudflare tunnel: Cloudflare makes each DNS record when you add the published")
+        say("application (guide section 8.1). Nothing to do at a registrar.")
+        return 0
+    ip = ip or public_ip()
+    rows = proxy_hosts(v)
+    zone = v["BARE_DOMAIN"]
+    say(f"DNS records for {v['ENVIRONMENT']} - make one A record per name at your registrar (Rebel.ca: Edit DNS records),")
+    say(f"pointing at {ip or '<this server public IP>'}. No AAAA (IPv6) records unless this server has that IPv6 address.\n")
+    say(f"  {'':3} {'Type':<5} {'Host' + (f' (in {zone})' if zone else ''):<{max(24, len(zone) + 12)}} Full name")
+    bad, elsewhere = 0, set()
+    for h, what, _ in rows:
+        host = ("@" if h == zone else h[: -len(zone) - 1]) if zone and (h == zone or h.endswith("." + zone)) else h
+        try:
+            got = sorted(set(socket.gethostbyname_ex(h)[2]))
+        except OSError:
+            got = []
+        try:
+            v6 = [a for a in socket.getaddrinfo(h, 443, socket.AF_INET6) if a]
+        except OSError:
+            v6 = []
+        if not got:
+            res, mark = "missing - not in DNS yet", "[ ]"
+        elif ip and got != [ip]:
+            res, mark = f"points to {', '.join(got)} - change it to {ip}", "[!]"
+            elsewhere.update(got)
+        else:
+            res, mark = f"OK {', '.join(got)}", "[x]"
+        if v6:
+            res += "  + an AAAA record: delete it, or make sure it is this server"
+        if mark != "[x]" or v6:
+            bad += 1
+        say(f"  {mark} {'A':<5} {host:<{max(24, len(zone) + 12)}} {h}\n        {res}")
+    say("")
+    if len(elsewhere) == 1 and bad == len(rows):
+        say(f"Every name points to {elsewhere.pop()}: the registrar's parking or default records (often a * wildcard")
+        say("and @). Delete them, then add the A records above.")
+    if not ip:
+        say("Give the server's public IP to compare against:  bash $TB/scripts_v1/03-config.sh dns <IP>")
+    if bad:
+        say(f"{bad} name(s) still to fix. New records can take a few minutes to show; run this again.")
+        return 1
+    say("Every name points at this server. Next: cd $TB/proxy && ./deploy.sh   (guide section 8.3)")
     return 0
 
 
@@ -496,6 +738,11 @@ def plan_changes(v):
     diff = [] if old_rt == json.loads(runtime_text(rt)) else (["(new file)"] if old_rt is None else
            sorted(k for k in set(old_rt or {}) | set(rt) if (old_rt or {}).get(k) != json.loads(runtime_text(rt)).get(k)))
     changes["tbrun"] = (p, runtime_text(rt), diff)
+    if v["PUBLIC_ACCESS"] == "proxy":
+        p = os.path.join(ROOT, "proxy", "Caddyfile")
+        text = caddy_text(v)
+        old = open(p).read() if os.path.isfile(p) else None
+        changes["proxy"] = (p, text, [] if old == text else (["(new file)"] if old is None else ["Caddyfile"]))
     return changes
 
 
@@ -505,7 +752,8 @@ def cmd_apply(path, dry=False, assume_yes=False):
         return 1
     if not os.path.isfile(path):
         say(f"No {path}. Renamed or moved? Put it back:  ls {path}*   (the running containers are not affected)")
-        say("Otherwise make one:  bash $TB/scripts_v1/03-config.sh new   - apply then keeps this server's current passwords.")
+        say("Otherwise make one:  bash $TB/scripts_v1/03-config.sh new   (proxy method: 03-config-proxy.sh)")
+        say("- apply then keeps this server's current passwords.")
         return 1
     if os.stat(path).st_mode & 0o077:
         os.chmod(path, 0o600)
@@ -517,6 +765,9 @@ def cmd_apply(path, dry=False, assume_yes=False):
         say("\nFix these in tbapps.conf, then run it again:")
         for e in errs:
             say(f"  - {e}")
+        return 1
+    if v["PUBLIC_ACCESS"] == "proxy" and not os.path.isdir(os.path.join(ROOT, "proxy")):
+        say(f"No {ROOT}/proxy folder: send the package again (00-push-to-server.sh), then apply.")
         return 1
     # Part 4: an empty value is taken from this server's current .env.local files, else generated.
     env = {s: read_kv(os.path.join(ROOT, s, ".env.local")) for s in STACKS}
@@ -568,8 +819,8 @@ def cmd_apply(path, dry=False, assume_yes=False):
         say(f"Set in the database: {', '.join(pw)}")
     for stack, (p, text, diff) in changes.items():
         if diff:
-            # runtime-config.json holds no secrets and must be readable by nginx inside the container
-            write_private(p, text, 0o644 if stack == "tbrun" else 0o600)
+            # runtime-config.json and the Caddyfile hold no secrets and must be readable inside the containers
+            write_private(p, text, 0o644 if stack in ("tbrun", "proxy") else 0o600)
     if not changed:
         say("\nNothing changed.")
         return 0
@@ -580,10 +831,17 @@ def cmd_apply(path, dry=False, assume_yes=False):
         return 0
     say(f"Running containers with new settings: {', '.join(CONTAINERS[s] for s in running)}")
     if assume_yes or yes("Recreate them now so they use the new settings"):
-        for s in ("postgres", "tbbe", "tbwww", "tbhelp", "tbrun", "cloudflared"):
-            if s in running:
-                say(f"  {s}: docker compose up -d --force-recreate")
-                subprocess.run(["docker", "compose", "up", "-d", "--force-recreate"], cwd=os.path.join(ROOT, s))
+        for s in ("postgres", "tbbe", "tbwww", "tbhelp", "tbrun", "cloudflared", "proxy"):
+            if s not in running:
+                continue
+            if s == "proxy":
+                # Caddy re-reads its file without dropping connections; a recreate only if that fails
+                say("  proxy: caddy reload")
+                if subprocess.run(["docker", "exec", "tbproxy", "caddy", "reload", "--config", "/etc/caddy/Caddyfile",
+                                   "--adapter", "caddyfile"]).returncode == 0:
+                    continue
+            say(f"  {s}: docker compose up -d --force-recreate")
+            subprocess.run(["docker", "compose", "up", "-d", "--force-recreate"], cwd=os.path.join(ROOT, s))
         say("Done. Check: bash $TB/scripts_v1/06-health-check.sh && bash $TB/scripts_v1/07-check-urls.sh")
     else:
         say("Later, in each of those folders: docker compose up -d --force-recreate")
@@ -591,14 +849,20 @@ def cmd_apply(path, dry=False, assume_yes=False):
 
 
 def main(argv):
-    if len(argv) < 2 or argv[1] not in ("new", "apply", "import", "check"):
+    if len(argv) < 2 or argv[1] not in ("new", "new-proxy", "apply", "import", "check", "dns"):
         say(__doc__)
         return 1
     args = [a for a in argv[2:] if not a.startswith("-")]
-    path = os.path.abspath(args[0]) if args else DEFAULT_CONF
     cmd = argv[1]
+    if cmd == "dns":
+        ip = next((a for a in args if re.match(r"^\d{1,3}(\.\d{1,3}){3}$", a)), "")
+        rest = [a for a in args if a != ip]
+        return cmd_dns(os.path.abspath(rest[0]) if rest else DEFAULT_CONF, ip)
+    path = os.path.abspath(args[0]) if args else DEFAULT_CONF
     if cmd == "new":
         return cmd_new(path)
+    if cmd == "new-proxy":
+        return cmd_new_proxy(path)
     if cmd == "import":
         if not ON_SERVER:
             say("import runs on the server, in $TB.")

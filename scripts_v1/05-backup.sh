@@ -14,6 +14,9 @@ docker info >/dev/null 2>&1 || { echo "Cannot use Docker as $USER. Log out and b
 set -a; . "$ROOT/postgres/.env.local"; set +a
 
 STAMP=$(date +%Y-%m-%d_%H%M)
+# The proxy method names its environment (PROD, STAGING ...) in tbapps.conf; it goes into the folder name.
+ENVIRONMENT=$(grep -s '^ENVIRONMENT=' "$ROOT/tbapps.conf" | tail -1 | cut -d= -f2 | tr -cd 'A-Za-z')
+[ -z "$ENVIRONMENT" ] || STAMP="${STAMP}_$ENVIRONMENT"
 DEST="$DEST_ROOT/$STAMP"
 mkdir -p "$DEST"; chmod 700 "$DEST_ROOT" "$DEST"
 

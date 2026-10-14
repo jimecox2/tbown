@@ -13,6 +13,8 @@
 # Cloudflare answers 530 / 1033 when a hostname has no published application on a running tunnel,
 # and 502 when the route exists but the container name or port is wrong (or the container is down).
 ROOT="${ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"   # the tbApps folder this script lives in
+ACCESS=$(grep -s '^PUBLIC_ACCESS=' "$ROOT/tbapps.conf" | tail -1 | cut -d= -f2)
+ENVIRONMENT=$(grep -s '^ENVIRONMENT=' "$ROOT/tbapps.conf" | tail -1 | cut -d= -f2)
 FAIL=0
 ok()   { printf '  \033[32mOK\033[0m    %s\n' "$1"; }
 bad()  { printf '  \033[31mFAIL\033[0m  %s\n' "$1"; FAIL=1; }
@@ -20,6 +22,14 @@ note() { printf '  \033[33m--\033[0m    %s\n' "$1"; }
 val()  { grep -s "^$1=" "$2" | tail -1 | cut -d= -f2- | sed 's#/*$##'; }
 code() { curl -s -o /dev/null -m 20 -w '%{http_code}' "$@"; }
 hint() {
+  if [ "$ACCESS" = proxy ]; then
+    case "$1" in
+      000) echo "no answer - the name is not in DNS yet (03-config.sh dns), ports 80/443 are closed (ufw, DigitalOcean firewall), or no certificate yet (docker logs tbproxy)" ;;
+      502|503|504) echo "the proxy cannot reach that container - is it running? (06-health-check.sh)" ;;
+      *) echo "unexpected answer" ;;
+    esac
+    return
+  fi
   case "$1" in
     000) echo "no answer - DNS name missing, or the tunnel/proxy is down" ;;
     530|1033) echo "Cloudflare has no route for this hostname - add the published application" ;;
@@ -46,9 +56,20 @@ echo "Website ($WWW):"
 if [ -z "$WWW" ] || [ "$WWW" = CHANGE_ME ]; then bad "website address not set - 03-config.sh apply"; else
   c=$(code "$WWW/"); [ "$c" = 200 ] && ok "home page 200" || bad "home page $c - $(hint "$c")"
   c=$(code "$WWW/sales/pricing"); [ "$c" = 200 ] && ok "/sales/pricing 200" || bad "/sales/pricing $c - $(hint "$c")"
-  curl -s -m 20 "$WWW/robots.txt" | grep -q "Sitemap: $WWW/sitemap.xml" && ok "robots.txt names this site ($WWW)" || bad "robots.txt does not name $WWW - 03-config.sh apply, then recreate tbwww"
+  if [ "$ACCESS" = proxy ] && [ -n "$ENVIRONMENT" ] && [ "$ENVIRONMENT" != PROD ]; then
+    curl -s -m 20 "$WWW/robots.txt" | grep -qx 'Disallow: /' && ok "robots.txt keeps search engines out ($ENVIRONMENT)" || bad "robots.txt does not block search engines on this $ENVIRONMENT server - 03-config.sh apply"
+  else
+    curl -s -m 20 "$WWW/robots.txt" | grep -q "Sitemap: $WWW/sitemap.xml" && ok "robots.txt names this site ($WWW)" || bad "robots.txt does not name $WWW - 03-config.sh apply, then recreate tbwww"
+  fi
   loc=$(curl -s -o /dev/null -m 20 -w '%{redirect_url}' "$WWW/dashboard")
   [ "$loc" = "$CLOUD/dashboard" ] && ok "/dashboard -> $loc" || bad "/dashboard -> '${loc}' (expected $CLOUD/dashboard - 03-config.sh apply, then recreate tbwww)"
+fi
+
+BARE=$(grep -s '^BARE_DOMAIN=' "$ROOT/tbapps.conf" | tail -1 | cut -d= -f2)
+if [ "$ACCESS" = proxy ] && [ -n "$BARE" ]; then
+  echo "Bare domain ($BARE):"
+  loc=$(curl -s -o /dev/null -m 20 -w '%{redirect_url}' "https://$BARE/")
+  [ "$loc" = "$WWW/" ] && ok "redirects to $loc" || bad "https://$BARE/ -> '${loc}' (expected $WWW/) - $(hint "$(code "https://$BARE/")")"
 fi
 
 echo "Timebars Cloud ($CLOUD):"

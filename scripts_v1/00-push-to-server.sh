@@ -4,7 +4,7 @@
 # Copies the stack folders, the scripts and the seed data to the server, into a folder called tbApps
 # under the parent folder you choose (where you keep your Docker apps). Safe to run again after you
 # update the package: it never overwrites or deletes what belongs to the server (.env / .env.local
-# files, runtime-config.json, uploaded files).
+# files, runtime-config.json, the proxy's Caddyfile, uploaded files).
 #
 #   bash scripts_v1/00-push-to-server.sh myserver                  # asks for the parent folder
 #   bash scripts_v1/00-push-to-server.sh myserver /docker/compose  # -> /docker/compose/tbApps
@@ -64,9 +64,9 @@ run "mkdir -p '$ROOT/scripts_v1' '$ROOT/seed' '$ROOT/tbbe/public/uploads'" || {
 { grep -sv "^$SERVER=" "$SAVED" || true; echo "$SERVER=$PARENT"; } > "$SAVED.tmp" && mv "$SAVED.tmp" "$SAVED"
 
 # --- copy ------------------------------------------------------------------------------------------
-KEEP=(--exclude '.env' --exclude '.env.local' --exclude 'runtime-config.json' --exclude 'public/uploads/***' --exclude '.gitkeep')
+KEEP=(--exclude '.env' --exclude '.env.local' --exclude 'runtime-config.json' --exclude 'Caddyfile' --exclude 'public/uploads/***' --exclude '.gitkeep')
 rsync -rlt --itemize-changes "${KEEP[@]}" "$PKG/docker/"  "$DEST$ROOT/"
-rsync -rlt --itemize-changes --exclude '00-push-to-server.sh' --exclude '__pycache__' "$PKG/scripts_v1/" "$DEST$ROOT/scripts_v1/"
+rsync -rlt --itemize-changes --exclude '00-*' --exclude '__pycache__' "$PKG/scripts_v1/" "$DEST$ROOT/scripts_v1/"
 rsync -rlt --itemize-changes "$PKG/seed/"    "$DEST$ROOT/seed/"
 rsync -rlt --itemize-changes "$PKG/VERSION.md" "$PKG/DEPLOY_TB_SYSTEM_CONTAINER_OPTION_V1.md" "$DEST$ROOT/"
 run "chmod 755 '$ROOT'/scripts_v1/*.sh '$ROOT'/*/deploy.sh '$ROOT'/postgres/initdb/*.sh"

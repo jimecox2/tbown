@@ -6,6 +6,8 @@
 #                                        .env.local and runtime-config.json, recreate what changed
 #   bash $TB/scripts_v1/03-config.sh check  show what apply would change; writes nothing
 #   bash $TB/scripts_v1/03-config.sh import on a server set up before tbapps.conf: make it from the current files
+#   bash $TB/scripts_v1/03-config.sh dns    proxy method: the DNS records to make, and which already work
+#   (the proxy method's questions: bash scripts_v1/03-config-proxy.sh - instead of new)
 #
 # Edit tbapps.conf (nano $TB/tbapps.conf), never the .env.local files: apply rewrites them.
 [ "$(id -u)" -ne 0 ] || { echo "Run this WITHOUT sudo, as your admin user."; exit 1; }

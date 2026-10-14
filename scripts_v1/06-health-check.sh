@@ -6,11 +6,18 @@ bad()  { printf '  \033[31mFAIL\033[0m  %s\n' "$1"; FAIL=1; }
 FAIL=0
 docker info >/dev/null 2>&1 || { echo "Cannot use Docker as $USER. Log out and back in after 01-install-docker.sh (id -nG must list docker)."; exit 1; }
 ROOT="${1:-$(cd "$(dirname "$0")/.." && pwd)}"   # the tbApps folder this script lives in
+ACCESS=$(grep -s '^PUBLIC_ACCESS=' "$ROOT/tbapps.conf" | tail -1 | cut -d= -f2)
+ENVIRONMENT=$(grep -s '^ENVIRONMENT=' "$ROOT/tbapps.conf" | tail -1 | cut -d= -f2)
+[ "$ACCESS" = proxy ] && echo "Environment: ${ENVIRONMENT:-PROD} - proxy method (Caddy on this server)"
 echo "Containers (running tag / tag in VERSION.md):"
-for pair in postgres:tbpgdb tbbe:tbbe tbwww:tbwwwp tbhelp:tbhelpapp tbrun:tbrun cloudflared:cloudflared; do
+for pair in postgres:tbpgdb tbbe:tbbe tbwww:tbwwwp tbhelp:tbhelpapp tbrun:tbrun cloudflared:cloudflared proxy:tbproxy; do
   stack=${pair%%:*}; c=${pair#*:}
   s=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$c" 2>/dev/null) || s=missing
   if [ "$c" = cloudflared ] && [ "$s" = missing ]; then continue; fi    # checked below with any other tunnel container
+  if [ "$c" = tbproxy ] && [ "$s" = missing ]; then
+    [ "$ACCESS" = proxy ] && bad "tbproxy missing - the proxy method needs it: cd $ROOT/proxy && ./deploy.sh"
+    continue
+  fi
   img=$(docker inspect -f '{{.Config.Image}}' "$c" 2>/dev/null); tag=${img##*:}
   listed=$(awk -F'|' -v img="\`${img%:*}\`" '$3 ~ img {gsub(/[ `]/,"",$4); if ($4 ~ /^[0-9A-Za-z][0-9A-Za-z._-]*$/) print $4; exit}' "$ROOT/VERSION.md" 2>/dev/null)
   note=""; [ -n "$listed" ] && [ "$tag" != "$listed" ] && note="  (VERSION.md: $listed)"
@@ -22,7 +29,7 @@ docker network inspect tbnet >/dev/null 2>&1 && ok "network tbnet" || bad "netwo
 # and made again, such a container is NOT put back on it, and a restart does not help: every address
 # then answers 502 from outside while everything here looks fine.
 tunnels=$(docker ps --format '{{.Names}} {{.Image}}' | awk '$2 ~ /cloudflared/ {print $1}')
-[ -n "$tunnels" ] || echo "  --    no Cloudflare tunnel container running (fine with your own proxy, section 8.2)"
+[ -n "$tunnels" ] || [ "$ACCESS" = proxy ] || echo "  --    no Cloudflare tunnel container running (fine with your own proxy, section 8.2)"
 for t in $tunnels; do
   if docker inspect -f '{{range $n, $v := .NetworkSettings.Networks}}{{$n}} {{end}}' "$t" | grep -qw tbnet; then
     ok "tunnel container $t is on tbnet"
