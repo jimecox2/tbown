@@ -14,7 +14,6 @@ For organisations that run the Timebars suite (Agilebars, Timebars, Costbars) on
 | `seed/` | demo seed data, loaded on each environment's first deploy |
 | [`VERSION.md`](VERSION.md) | the image tags this release was tested with |
 | [`WELCOME_EMAIL_CONTAINER_OPTION.md`](WELCOME_EMAIL_CONTAINER_OPTION.md) | the getting-started email Timebars Ltd. sends with this package (template) |
-| [`archive/DEPLOY_TB_SYSTEM_CONTAINER_OPTION_V1.md`](archive/DEPLOY_TB_SYSTEM_CONTAINER_OPTION_V1.md), `archive/scripts_v1/`, `docker/` | V1: one settings file per server — kept for servers installed that way |
 
 ## How it is deployed (V2)
 
