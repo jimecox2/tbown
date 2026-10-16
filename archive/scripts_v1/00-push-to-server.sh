@@ -6,17 +6,17 @@
 # update the package: it never overwrites or deletes what belongs to the server (.env / .env.local
 # files, runtime-config.json, the proxy's Caddyfile, uploaded files).
 #
-#   bash scripts_v1/00-push-to-server.sh myserver                  # asks for the parent folder
-#   bash scripts_v1/00-push-to-server.sh myserver /docker/compose  # -> /docker/compose/tbApps
-#   bash scripts_v1/00-push-to-server.sh local /docker/compose     # this machine itself (no ssh)
+#   bash archive/scripts_v1/00-push-to-server.sh myserver                  # asks for the parent folder
+#   bash archive/scripts_v1/00-push-to-server.sh myserver /docker/compose  # -> /docker/compose/tbApps
+#   bash archive/scripts_v1/00-push-to-server.sh local /docker/compose     # this machine itself (no ssh)
 #
 # The parent folder must be a FULL path, starting with /  - for example /docker/compose, /srv/docker or
 # /home/<you>. Your answer is remembered per server for the next run (file .push-targets, not in git).
 # It also sets TB=<that folder>/tbApps in the server user's ~/.bashrc, so the guide's commands
 # (cd $TB/tbbe && ./deploy.sh) work as written.
 set -euo pipefail
-SERVER="${1:?usage: bash scripts_v1/00-push-to-server.sh <server> [parent folder]   (<server> = a Host from ~/.ssh/config, or local)}"
-PKG="$(cd "$(dirname "$0")/.." && pwd)"
+SERVER="${1:?usage: bash archive/scripts_v1/00-push-to-server.sh <server> [parent folder]   (<server> = a Host from ~/.ssh/config, or local)}"
+PKG="$(cd "$(dirname "$0")/../.." && pwd)"   # package root: this script lives in archive/scripts_v1
 SAVED="$PKG/.push-targets"
 
 if [ "$SERVER" = local ]; then
@@ -28,7 +28,7 @@ fi
 command -v rsync >/dev/null || { echo "rsync is missing on this workstation (sudo apt install rsync)."; exit 1; }
 if [ "$SERVER" != local ] && ! ssh -o ConnectTimeout=10 "$SERVER" true; then
   echo "Cannot ssh to $SERVER (see the message above). Check the Host in ~/.ssh/config and that the server runs SSH."
-  echo "If $SERVER is this machine itself, use:  bash scripts_v1/00-push-to-server.sh local <parent folder>"
+  echo "If $SERVER is this machine itself, use:  bash archive/scripts_v1/00-push-to-server.sh local <parent folder>"
   exit 1
 fi
 run 'command -v rsync >/dev/null' || { echo "rsync is missing on $SERVER - your server admin installs it (sudo apt install rsync)."; exit 1; }
@@ -66,9 +66,9 @@ run "mkdir -p '$ROOT/scripts_v1' '$ROOT/seed' '$ROOT/tbbe/public/uploads'" || {
 # --- copy ------------------------------------------------------------------------------------------
 KEEP=(--exclude '.env' --exclude '.env.local' --exclude 'runtime-config.json' --exclude 'Caddyfile' --exclude 'public/uploads/***' --exclude '.gitkeep')
 rsync -rlt --itemize-changes "${KEEP[@]}" "$PKG/docker/"  "$DEST$ROOT/"
-rsync -rlt --itemize-changes --exclude '00-*' --exclude '__pycache__' "$PKG/scripts_v1/" "$DEST$ROOT/scripts_v1/"
+rsync -rlt --itemize-changes --exclude '00-*' --exclude '__pycache__' "$PKG/archive/scripts_v1/" "$DEST$ROOT/scripts_v1/"
 rsync -rlt --itemize-changes "$PKG/seed/"    "$DEST$ROOT/seed/"
-rsync -rlt --itemize-changes "$PKG/VERSION.md" "$PKG/DEPLOY_TB_SYSTEM_CONTAINER_OPTION_V1.md" "$DEST$ROOT/"
+rsync -rlt --itemize-changes "$PKG/VERSION.md" "$PKG/archive/DEPLOY_TB_SYSTEM_CONTAINER_OPTION_V1.md" "$DEST$ROOT/"
 run "chmod 755 '$ROOT'/scripts_v1/*.sh '$ROOT'/*/deploy.sh '$ROOT'/postgres/initdb/*.sh"
 
 # --- TB in the server user's ~/.bashrc --------------------------------------------------------------

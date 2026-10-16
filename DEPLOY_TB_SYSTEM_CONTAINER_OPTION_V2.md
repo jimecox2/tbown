@@ -180,7 +180,7 @@ sudo bash $TB/scripts/01-install-docker.sh
 **7.2 Log in to Docker Hub** (once per server), with your read-only access token as the password:
 
 ```bash
-# jimecox807 is Timebadrs Ltd. docker hub account where images are pulled from.
+# jimecox807 is Timebars Ltd.'s Docker Hub account where images are pulled from.
 docker login -u jimecox807
 ```
 In the password prompt, enter the docker PAT, it may look like this: dckr_pat_xxyxyxyxyxyxyx_OmdXXX. Obtaine this from Timebars Ltd. for the right to pull images.

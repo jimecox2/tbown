@@ -271,7 +271,7 @@ Decide where Timebars goes on the server: the **parent folder** where you keep D
 On your workstation, in your copy of the package:
 ```bash
 cd ~/tbown && git pull                                  # latest version (skip for a release download)
-bash scripts_v1/00-push-to-server.sh myserver /docker/compose
+bash archive/scripts_v1/00-push-to-server.sh myserver /docker/compose
 ```
 Leave the folder out and the script asks for it; it remembers your answer for that server next time. If the parent belongs to root, the script tells you the one `sudo` command to run on the server first.
 
@@ -289,7 +289,7 @@ echo $TB                                                # e.g. /docker/compose/t
 When the package and Docker are on the **same machine** — you install on the computer you are sitting at, or your copy of the package is already on the server — there is nothing to connect to: no SSH server is needed and section 3 does not apply. Use the word `local` instead of a server name:
 ```bash
 cd ~/tbown                                              # wherever your copy of the package is
-bash scripts_v1/00-push-to-server.sh local /docker/compose
+bash archive/scripts_v1/00-push-to-server.sh local /docker/compose
 source ~/.bashrc                                        # this terminal learns $TB (new terminals have it)
 echo $TB                                                # /docker/compose/tbApps
 ```
@@ -332,14 +332,14 @@ out from it.
 
 **a. Answer a few questions** — on your workstation (in your copy of the package) or on the server:
 ```bash
-bash scripts_v1/03-config.sh new              # workstation: writes tbapps.conf in the package folder
+bash archive/scripts_v1/03-config.sh new              # workstation: writes tbapps.conf in the package folder
 bash $TB/scripts_v1/03-config.sh new          # or on the server: writes $TB/tbapps.conf
 ```
 It asks your domain (e.g. `example.com`), an optional letter added to every name (`s` for a staging server: `agiles`, `be2s` …), proposes the six addresses — press Enter to accept each — and asks whether to add the short `ab` / `tb` / `cb` addresses as optional extras. Run it again later to change the addresses: it keeps part 2 (your keys), part 3 and part 4 (the passwords), and saves the old file next to it.
 
 **Proxy method (section 8.3)?** Use its own questions instead of `new`:
 ```bash
-bash scripts_v1/03-config-proxy.sh            # workstation, or on the server: bash $TB/scripts_v1/03-config-proxy.sh
+bash archive/scripts_v1/03-config-proxy.sh            # workstation, or on the server: bash $TB/scripts_v1/03-config-proxy.sh
 ```
 It asks which environment this server is (PROD, STAGING, DEV or TRAINING), that environment's domain, process names (`agile` / `pmrm` / `ppm`) or initials (`ab` / `tb` / `cb`) for the three apps, whether to install the offline service worker, and an email for Let's Encrypt. The bare domain is always redirected to the website. The rest of this section is the same for both methods.
 
@@ -418,7 +418,7 @@ visitors between them.
 
 ### 8.2 Your own DNS, reverse proxy and certificates
 
-See [`docker/proxy-example/README.md`](docker/proxy-example/README.md): which local address each hostname points at, where your certificate and key go, and an example nginx configuration. DNS records, certificates and their renewal are your responsibility. This is also the way for internal-only names (`tb.company.internal`) with certificates from your own certificate authority.
+See [`docker/proxy-example/README.md`](../docker/proxy-example/README.md): which local address each hostname points at, where your certificate and key go, and an example nginx configuration. DNS records, certificates and their renewal are your responsibility. This is also the way for internal-only names (`tb.company.internal`) with certificates from your own certificate authority.
 
 ### 8.3 The proxy on this server (Caddy, Let's Encrypt)
 
@@ -573,7 +573,7 @@ Users' own project data lives in their browsers: their backup files and synced s
 
 | What | How |
 |---|---|
-| This package | workstation: `git pull` (or new release), then `bash scripts_v1/00-push-to-server.sh myserver` |
+| This package | workstation: `git pull` (or new release), then `bash archive/scripts_v1/00-push-to-server.sh myserver` |
 | Any container | server: `cd $TB/<stack> && ./deploy.sh` and type the new tag from `VERSION.md`; back up first for `tbbe` |
 | Roll back | the same, with the previous tag (`deploy.sh` shows the one running now) |
 | A setting (address, key) | edit `tbapps.conf`, then `bash $TB/scripts_v1/03-config.sh apply` (it recreates what changed) |
@@ -735,7 +735,7 @@ Your usual hardening (fail2ban, auditd, your policies) goes on top.
 
 | Step | What | Section |
 |---|---|---|
-| 1 | Send the package: `bash scripts_v1/00-push-to-server.sh <server> /home/<you>` | 5 |
+| 1 | Send the package: `bash archive/scripts_v1/00-push-to-server.sh <server> /home/<you>` | 5 |
 | 2 | Install Docker, log out and in | 6 |
 | 3 | Volumes and network: `bash $TB/scripts_v1/02-create-volumes.sh` | 7 |
 | 4 | Settings: `bash $TB/scripts_v1/03-config-proxy.sh` — environment, domain, name style, offline; paste your keys; `bash $TB/scripts_v1/03-config.sh apply` | 7.1 |

@@ -1,10 +1,13 @@
 # Versions
 
-The set of image tags tested together. `deploy.sh` offers the tag listed here, and
-`06-health-check.sh` shows any container running a different one.
+The set of image tags tested together. `scripts/apply.sh` copies this file into every environment
+package (`envs/<ENV>/VERSION.md`); on the server `deploy.sh` offers the tag listed here, `deploy-all.sh`
+uses it without asking, and `06-health-check.sh` shows any container running a different one. After
+changing a tag here, run `bash scripts/apply.sh --force <ENV>` and push the package again.
 
-Release: **2026.10.09** — every stack deployed the same way (`.env.local` for settings, the tag in `.env`,
-network `tbnet`).
+Release: **2026.10.09**, deployed with V2 (one package per environment from `tbapps.conf`, see
+`DEPLOY_TB_SYSTEM_CONTAINER_OPTION_V2.md`). Every stack is deployed the same way (`.env.local` for
+settings, the tag in `.env`, network `tbnet`). V1 servers (`archive/`) use the same tags.
 
 | Component | Image | Tag | Notes |
 |---|---|---|---|
