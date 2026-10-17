@@ -206,6 +206,8 @@ nano $TB/secrets.env
 bash $TB/scripts/03-make-passwords.sh
 ```
 
+> **Experienced users: run Deploy All here.** With 7.1 to 7.4 done, `cd $TB && ./deploy-all.sh` runs 7.5 to 7.9 in one go with the tags in `VERSION.md` (it repeats 7.3 and 7.4 safely). It loads the seed data only on the first deploy and is safe to run again: it keeps the passwords and the data and recreates only the containers whose image or settings changed. Then go on to [section 8](#8-check-and-finish-the-environment).
+
 **7.5 Database and Strapi.** Each `deploy.sh` asks for the image tag; press Enter for the one in `VERSION.md`.
 
 ```bash
@@ -239,8 +241,7 @@ cd $TB/proxy && ./deploy.sh
 bash $TB/scripts/06-health-check.sh
 ```
 
-**The Deploy All shortcut:** after completing sections 7.1, 7.2 and pasting the keys, do this: `cd $TB && ./deploy-all.sh`. This runs sections 7.3 to 7.9 in one go with the tags in `VERSION.md`. 
-It loads the seed data only on the first deploy, and it is safe to run again: it keeps the passwords and the data and recreates only the containers whose image or settings changed.
+**The Deploy All shortcut:** see the note after 7.4.
 
 ## 8. Check and finish the environment
 
