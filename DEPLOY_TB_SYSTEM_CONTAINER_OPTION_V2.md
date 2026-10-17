@@ -185,6 +185,14 @@ docker login -u jimecox807
 ```
 In the password prompt, enter the docker PAT, it may look like this: dckr_pat_xxyxyxyxyxyxyx_OmdXXX. Obtaine this from Timebars Ltd. for the right to pull images.
 
+> **Important: deploying on a server where these Docker volumes already exist.** If this server has run a Timebars database before, the `postgres_db` volume is still there. Postgres then skips its first-time setup and keeps the old database passwords, so Strapi stops with `password authentication failed for user "strapi"`. Check before you deploy: `docker volume ls | grep postgres`. If `postgres_db` is listed and nothing in it is needed, remove it so the environment starts clean (this deletes that database; make sure no other stack on the server uses it):
+>
+> ```bash
+> docker rm -f tbbe tbpgdb 2>/dev/null; docker volume rm postgres_db && rm -f $TB/.seeded
+> ```
+>
+> Then carry on with 7.3, or run `./deploy-all.sh`, which makes a new volume and loads the seed. To keep the data instead, restore the `secrets.env` that belongs to it from your vault.
+
 **7.3 Create Docker network and volumes:**
 
 ```bash
@@ -340,7 +348,7 @@ Users' own project data lives in their browsers; their backup files and synced s
 | `docker logs tbproxy`: *could not get certificate*        | Let's Encrypt cannot reach the name: public DNS record and ports 80/443 from the internet, or use`TLS=internal`                                                       |
 | Login fails from a name                                   | the name is not in that environment's settings: fix it in`tbapps.conf`, `apply --force <ENV>`, push, `./deploy-all.sh`                                                |
 | Strapi admin login fails                                  | the seed's admin accounts have Timebars Ltd.'s passwords: reset yours ([section 8](#8-check-and-finish-the-environment)). After 5 failed tries Strapi waits 5 minutes |
-| Strapi:`password authentication failed for user "strapi"` | `secrets.env` has another database password than the database: put back the copy from your vault                                                                      |
+| Strapi:`password authentication failed for user "strapi"` | the `postgres_db` volume is older than this `secrets.env` (an earlier run on this server, or a new `secrets.env`): remove the volume and deploy again (the Important note before 7.3), or restore that volume's `secrets.env` from your vault |
 | `deploy-all.sh` loads the seed again                      | it only does that for a new database volume, or after a seed load that stopped half way (`$TB/.seeding`)                                                              |
 | No offline mode / no service worker                       | not HTTPS, or the certificate is not trusted (`TLS=internal`), or `APP_OFFLINE=no`                                                                                    |
 
