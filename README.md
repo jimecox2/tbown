@@ -1,5 +1,3 @@
-bash envs/DEV/00-push-to-server.sh tbdovm2 /docker
-
 # tbown — Timebars self-hosted package
 
 For organisations that run the Timebars suite (Agilebars, Timebars, Costbars) on their own servers, using the container option.
@@ -16,7 +14,6 @@ For organisations that run the Timebars suite (Agilebars, Timebars, Costbars) on
 | `seed/` | demo seed data, loaded on each environment's first deploy |
 | [`VERSION.md`](VERSION.md) | the image tags this release was tested with |
 | [`WELCOME_EMAIL_CONTAINER_OPTION.md`](WELCOME_EMAIL_CONTAINER_OPTION.md) | the getting-started email Timebars Ltd. sends with this package (template) |
-| [`DEPLOY_TB_SYSTEM_CONTAINER_OPTION_V1.md`](DEPLOY_TB_SYSTEM_CONTAINER_OPTION_V1.md), `docker/`, `scripts_v1/` | V1: one settings file per server — kept for servers installed that way |
 
 ## How it is deployed (V2)
 

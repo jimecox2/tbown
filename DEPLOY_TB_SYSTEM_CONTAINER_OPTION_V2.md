@@ -151,7 +151,8 @@ Keep the root session open and test from a new terminal: `ssh prod1 'hostname; s
 
 On the dev box, with SSH access to the target server:
 ```bash
-bash envs/[e.g. DEV]/00-push-to-server.sh [Host] ~/docker/compose
+bash envs/[e.g. DEV]/00-push-to-server.sh [Host] /docker/compose
+# use local for Host if installing on local box - ssh not necessary
 ```
 The second argument is the folder where you keep Docker apps on that server (a full path, for example `/docker/compose` or `/home/<you>`); leave it out and the script asks. The package creates the folder `tbApps` inside it with scripts and seed data. It refuses a server that already holds another environment.
 
@@ -180,10 +181,18 @@ sudo bash $TB/scripts/01-install-docker.sh
 **7.2 Log in to Docker Hub** (once per server), with your read-only access token as the password:
 
 ```bash
-# jimecox807 is Timebadrs Ltd. docker hub account where images are pulled from.
+# jimecox807 is Timebars Ltd.'s Docker Hub account where images are pulled from.
 docker login -u jimecox807
 ```
 In the password prompt, enter the docker PAT, it may look like this: dckr_pat_xxyxyxyxyxyxyx_OmdXXX. Obtaine this from Timebars Ltd. for the right to pull images.
+
+> **Important: re-deploying on a server where Timebars Docker volumes already exist.** If this server has run a Timebars database before, the `postgres_db` volume is still there. Postgres then skips its first-time setup and keeps the old database passwords, so Strapi stops with `password authentication failed for user "strapi"`. Check before you deploy: `docker volume ls | grep postgres`. If `postgres_db` is listed and nothing in it is needed, remove it so the environment starts clean (this deletes that database; make sure no other stack on the server uses it):
+>
+> ```bash
+> docker rm -f tbbe tbpgdb 2>/dev/null; docker volume rm postgres_db && rm -f $TB/.seeded
+> ```
+>
+> Then carry on with 7.3, or run `./deploy-all.sh`, which makes a new volume and loads the seed. To keep the data instead, restore the `secrets.env` that belongs to it from your vault.
 
 **7.3 Create Docker network and volumes:**
 
@@ -196,13 +205,19 @@ bash $TB/scripts/02-create-volumes.sh
 ```bash
 nano $TB/secrets.env
 bash $TB/scripts/03-make-passwords.sh
+# STRAPI_ADMIN_TOKEN can be obtained from Strapi Admin site after its up.
 ```
+
+> **Experienced users: run Deploy All here.**
+> With 7.1 to 7.4 done, `cd $TB && ./deploy-all.sh`
+> This runs sections 7.5 to 7.9 in one go with the tags in `VERSION.md` (it repeats 7.3 and 7.4 safely). It loads the seed data only on the first deploy and is safe to run again: it keeps the passwords and the data and recreates only the containers whose image or settings changed. Then go on to [section 8](#8-check-and-finish-the-environment).
 
 **7.5 Database and Strapi.** Each `deploy.sh` asks for the image tag; press Enter for the one in `VERSION.md`.
 
 ```bash
-cd $TB/postgres && ./deploy.sh
+cd $TB/postgres && ./deploy.sh  # press enter to select defaul tag
 cd $TB/tbbe && ./deploy.sh                    # waits for Strapi to start (a minute or two)
+docker logs --tail 50 tbbe
 ```
 
 **7.6 The seed data.** Every environment starts from the seed:
@@ -231,8 +246,7 @@ cd $TB/proxy && ./deploy.sh
 bash $TB/scripts/06-health-check.sh
 ```
 
-**The Deploy All shortcut:** after completing sections 7.1, 7.2 and pasting the keys, do this: `cd $TB && ./deploy-all.sh`. This runs sections 7.3 to 7.9 in one go with the tags in `VERSION.md`. 
-It loads the seed data only on the first deploy, and it is safe to run again: it keeps the passwords and the data and recreates only the containers whose image or settings changed.
+**The Deploy All shortcut:** see the note after 7.4.
 
 ## 8. Check and finish the environment
 
@@ -340,7 +354,7 @@ Users' own project data lives in their browsers; their backup files and synced s
 | `docker logs tbproxy`: *could not get certificate*        | Let's Encrypt cannot reach the name: public DNS record and ports 80/443 from the internet, or use`TLS=internal`                                                       |
 | Login fails from a name                                   | the name is not in that environment's settings: fix it in`tbapps.conf`, `apply --force <ENV>`, push, `./deploy-all.sh`                                                |
 | Strapi admin login fails                                  | the seed's admin accounts have Timebars Ltd.'s passwords: reset yours ([section 8](#8-check-and-finish-the-environment)). After 5 failed tries Strapi waits 5 minutes |
-| Strapi:`password authentication failed for user "strapi"` | `secrets.env` has another database password than the database: put back the copy from your vault                                                                      |
+| Strapi:`password authentication failed for user "strapi"` | the `postgres_db` volume is older than this `secrets.env` (an earlier run on this server, or a new `secrets.env`): remove the volume and deploy again (the Important note before 7.3), or restore that volume's `secrets.env` from your vault |
 | `deploy-all.sh` loads the seed again                      | it only does that for a new database volume, or after a seed load that stopped half way (`$TB/.seeding`)                                                              |
 | No offline mode / no service worker                       | not HTTPS, or the certificate is not trusted (`TLS=internal`), or `APP_OFFLINE=no`                                                                                    |
 

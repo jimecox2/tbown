@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 00-push-to-server.sh — on the dev box, copy this environment's package to its server (the V1 way).
+# 00-push-to-server.sh — on the dev box, copy this environment's package to its server.
 #
 #   bash envs/PROD/00-push-to-server.sh prod1                    # asks where you keep Docker apps there
 #   bash envs/PROD/00-push-to-server.sh prod1 /docker/compose    # -> /docker/compose/tbApps

@@ -3,11 +3,6 @@
 .env.local
 *.env
 !*.env.example
-docker/tbrun/runtime-config.json
-docker/proxy/Caddyfile
-docker/proxy/caddy-validate.log
-docker/tbbe/public/uploads/*
-!docker/tbbe/public/uploads/.gitkeep
 backups/
 *.dump
 !seed/*.dump
