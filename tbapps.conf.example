@@ -4,7 +4,8 @@
 #
 # [ALL] holds what every environment shares. Each [SECTION] below is one environment, on its own server;
 # delete the ones you do not need, or add your own name (letters only). A section may repeat any [ALL]
-# setting to override it. Each section types its own six names (no two environments share a name).
+# setting to override it. Each section types its own six names (no two environments share a name); the help
+# library's name (HELP_HOST) is made from CLOUD_HOST unless a section types it.
 # Only the section named PROD is open to search engines; every other environment sends "noindex".
 # Plain KEY=VALUE lines; hostnames only (no https://, no / at the end); no comments after a value.
 
@@ -25,6 +26,9 @@ OP_URL=
 # and passwords). Set here, they are copied into every environment's package.
 GEMINI_API_KEY=
 SENDGRID_API_KEY=
+# Who may push content into Strapi: Cloud's /update-help (help articles) and the website's /update-articles
+# (marketing). Comma-separated emails, no spaces; each must ALSO be an Administrator in Strapi. Empty = nobody.
+HELP_EDITORS=
 
 # Each environment:
 #   SERVER_IP  its server's address, for the DNS list in DEPLOY.md - may stay empty until you have it
@@ -33,6 +37,8 @@ SENDGRID_API_KEY=
 #              internal = Caddy's own certificates (trust its root certificate on each browser machine)
 #   LISTEN_IP  only with PROXY=own and your proxy on another machine: this server's address it reaches
 #   The six names: Agilebars, Timebars, Costbars (one app), Strapi backend, website, Timebars Cloud
+#   HELP_HOST  optional seventh name, the help library: empty = CLOUD_HOST with help for cloud (cloud.prod.com ->
+#              help.prod.com; clouds.x -> helps.x). It redirects to Cloud's /help, so it needs a DNS record too.
 
 [DEV]
 SERVER_IP=

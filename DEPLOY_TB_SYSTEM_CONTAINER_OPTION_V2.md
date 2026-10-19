@@ -35,7 +35,7 @@ Contents
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
 | **Dev**          | fills in`tbapps.conf`, runs `apply`, checks the deployment packages, sends each one to its server                          | the dev box, in VS Code |
 | **Server admin** | provides each server, patched, with an admin user and SSH key login (or runs`00-prep-new-server.sh` on a new cloud server) | each server             |
-| **DNS team**     | points each environment's six names at its server (or at your own proxy)                                                   | your DNS                |
+| **DNS team**     | points each environment's seven names at its server (or at your own proxy)                                                   | your DNS                |
 | **DevOps**       | runs the numbered scripts on the server, tests the environment                                                             | each server, over SSH   |
 
 One person can play several roles. The customer decides how a package reaches a server: we recommend giving the dev temporary SSH access to push it, so no secret is handed around ([section 11](#11-keys-and-passwords)).
@@ -46,7 +46,7 @@ Important: This process is simple with SSH keys, make sure you understand your o
 
 Each environment runs on its own server, DEV included; environments never share a server. By Default the containers run on the same docker server. It is up to the customer to move containers to other servers and make network changes if necessary.
 
-**Gather, per environment:** the server's IP address, and the six names your DNS team will create. You can start without either: `apply` works with an empty IP, and the names only need to resolve before [section 8](#8-check-and-finish-the-environment).
+**Gather, per environment:** the server's IP address, and the seven names your DNS team will create. You can start without either: `apply` works with an empty IP, and the names only need to resolve before [section 8](#8-check-and-finish-the-environment).
 
 
 
@@ -55,7 +55,7 @@ Each environment runs on its own server, DEV included; environments never share 
 | **Dev box**                   | any Ubuntu machine with VS Code,`git`, `python3`, `rsync` and `ssh`. It edits and sends packages. It can also be DEV's server (see [section 6](#6-send-the-package-to-the-server)); no other environment runs on it.                         |
 | **A server per environment**  | Ubuntu 24.04 or 26.04, 2+ cores, 4 GB RAM (with swap), 100 GB disk, patched under your policies; an admin user with`sudo` and SSH key login; outbound internet to Docker Hub. With our Caddy proxy, ports 80 and 443 reachable by the users. |
 | **Docker Hub access**         | a Docker Hub account with pull access granted by Timebars Ltd., and a read-only access token                                                                                                                                                 |
-| **Six names per environment** | Agilebars, Timebars, Costbars (one app, three names), the Strapi backend, the website, Timebars Cloud, for example`agile.prod.com`, `pmrm.prod.com`, `ppm.prod.com`, `be2.prod.com`, `www.prod.com`, `cloud.prod.com`                        |
+| **Seven names per environment** | Agilebars, Timebars, Costbars (one app, three names), the Strapi backend, the website, Timebars Cloud and its help library, for example`agile.prod.com`, `pmrm.prod.com`, `ppm.prod.com`, `be2.prod.com`, `www.prod.com`, `cloud.prod.com`, `help.prod.com` (you type six; the help name is made from the Cloud name) |
 | **Keys (optional)**           | Google Gemini (AI), SendGrid (email), Stripe (only if you sell licences):[section 11](#11-keys-and-passwords)                                                                                                                                |
 
 The containers in every environment:
@@ -93,7 +93,8 @@ Open `tbapps.conf` in VS Code. `[ALL]` holds what every environment shares; each
 
 | Setting                                                                                   | Where                  | What                                                                                                                                                  |
 | ----------------------------------------------------------------------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `APP_AB_HOST`, `APP_TB_HOST`, `APP_CB_HOST`, `BACKEND_HOST`, `WEBSITE_HOST`, `CLOUD_HOST` | each section           | this environment's six names, typed in full, e.g.`pmrm.staging.com`. No two environments share a name.                                                |
+| `APP_AB_HOST`, `APP_TB_HOST`, `APP_CB_HOST`, `BACKEND_HOST`, `WEBSITE_HOST`, `CLOUD_HOST` | each section           | this environment's six names, typed in full, e.g.`pmrm.staging.com`. No two environments share a name. `CLOUD_HOST` should start with `cloud.` |
+| `HELP_HOST`                                                                               | each section, optional | the help library's name. Empty = `CLOUD_HOST` with `help` for `cloud` (`cloud.prod.com` -> `help.prod.com`). It redirects to Cloud's `/help` and needs a DNS record like the others |
 | `SERVER_IP`                                                                               | each section           | the server's address, for the DNS list in`DEPLOY.md`. May stay empty until you have it.                                                               |
 | `PROXY`                                                                                   | each section           | `caddy` = our Caddy container on the server; `own` = your proxy ([section 10](#10-your-own-proxy))                                                    |
 | `TLS`                                                                                     | each section           | `letsencrypt` = public names, ports 80/443 open to the internet; `internal` = Caddy's own certificates, for names only in internal DNS or hosts files |
@@ -101,6 +102,7 @@ Open `tbapps.conf` in VS Code. `[ALL]` holds what every environment shares; each
 | `ACME_EMAIL`                                                                              | `[ALL]`                | Let's Encrypt sends certificate notices here                                                                                                          |
 | `EMAIL_FROM`, `EMAIL_REPLY_TO`                                                            | `[ALL]`                | sender of registration and password emails (verified in SendGrid)                                                                                     |
 | `APP_OFFLINE`, `EXTRA_CORS_ORIGINS`, `OP_URL`                                             | `[ALL]`                | offline mode (yes), other allowed browser origins, your OpenProject address                                                                           |
+| `HELP_EDITORS`                                                                            | `[ALL]`                | emails (comma separated, no spaces) who may push content into Strapi: Cloud `/update-help`, website `/update-articles`. Each must also be an Administrator in Strapi. Empty = nobody |
 | `GEMINI_API_KEY`, `SENDGRID_API_KEY`                                                      | `[ALL]`, optional      | recommended: leave empty and paste them on each server ([section 11](#11-keys-and-passwords))                                                         |
 
 Only the section named `PROD` is open to search engines; every other environment sends `noindex`.

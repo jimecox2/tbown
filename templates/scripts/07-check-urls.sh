@@ -23,6 +23,7 @@ hint() {
 BE=$(val PUBLIC_URL "$ROOT/tbbe/.env.local")
 WWW=$(val NEXTAUTH_URL "$ROOT/tbwww/.env.local")
 CLOUD=$(val NEXTAUTH_URL "$ROOT/tbhelp/.env.local")
+HELP=$(val CLOUD_HELP_URL "$ROOT/tbhelp/.env.local")
 APPS=$(python3 -c 'import json,sys; [print(r["host"]) for r in json.load(open(sys.argv[1])).get("sites",[]) if r.get("host")]' "$ROOT/tbrun/runtime-config.json" 2>/dev/null)
 APPS="$APPS $*"
 OFFLINE=$(python3 -c 'import json,sys; [print(r["host"]) for r in json.load(open(sys.argv[1])).get("sites",[]) if r.get("offline")]' "$ROOT/tbrun/runtime-config.json" 2>/dev/null)
@@ -48,6 +49,13 @@ if [ -z "$CLOUD" ] || [ "$CLOUD" = CHANGE_ME ]; then bad "Cloud address not set 
   c=$(code "$CLOUD/"); [ "$c" = 200 ] && ok "home page 200" || bad "home page $c - $(hint "$c")"
   c=$(code -X POST -H 'Content-Type: application/json' -d '{}' "$CLOUD/api/ai/help")
   case "$c" in 401|400) ok "/api/ai/help $c (needs a login, as expected)";; *) bad "/api/ai/help $c - $(hint "$c")";; esac
+  c=$(code "$CLOUD/help"); [ "$c" = 200 ] && ok "/help (help library) 200" || bad "/help $c - $(hint "$c")"
+fi
+
+echo "Help library ($HELP):"
+if [ -z "$HELP" ]; then bad "CLOUD_HELP_URL not set - scripts/apply.sh --force on the dev box, copy again, ./deploy-all.sh"; else
+  loc=$(curl ${CURL_OPTS:-} -s -o /dev/null -m 20 -w '%{redirect_url}' "$HELP/")
+  [ "$loc" = "$CLOUD/help" ] && ok "$HELP -> $loc" || bad "$HELP -> '${loc}' (expected $CLOUD/help: the help name needs a DNS record and a proxy route to Cloud, and must share CLOUD_HOST's domain)"
 fi
 
 echo "Apps:"
@@ -58,11 +66,13 @@ for h in $APPS; do
   curl ${CURL_OPTS:-} -s -m 20 "$u/runtime-config.json" | python3 -c 'import json,sys; json.load(sys.stdin)' 2>/dev/null && rc=yes || rc=no
   sw=$(curl ${CURL_OPTS:-} -s -m 20 "$u/sw.js" | head -1 | grep -c TB-OFFLINE-SW)
   ai=$(code -X POST -H 'Content-Type: application/json' -d '{}' "$u/ai/help")
+  docs=$(code "$u/docsHelp/Common_01_Getting_Started.md")   # in-app Ask AI reads the help files from Cloud through the app
   cors=$(curl ${CURL_OPTS:-} -s -o /dev/null -D - -m 20 -X OPTIONS -H "Origin: $u" -H 'Access-Control-Request-Method: POST' "$BE/api/auth/local" | tr -d '\r' | grep -i '^access-control-allow-origin:' | awk '{print $2}')
-  msg="$h 200, runtime-config $rc, AI $ai, Strapi CORS ${cors:-none}"
+  msg="$h 200, runtime-config $rc, AI $ai, help files $docs, Strapi CORS ${cors:-none}"
   problems=""
   [ "$rc" = yes ] || problems="$problems runtime-config.json not served;"
   case "$ai" in 401|400) ;; *) problems="$problems /ai/ answered $ai;";; esac
+  [ "$docs" = 200 ] || problems="$problems /docsHelp/ answered $docs (the app proxies it to tbhelpapp - is Cloud running?);"
   [ "$cors" = "$u" ] || problems="$problems Strapi does not allow $u (fix the address with scripts/apply.sh --force on the dev box, copy again, ./deploy-all.sh);"
   if echo "$OFFLINE" | grep -qx "$h" && [ "$sw" != 1 ]; then problems="$problems offline host but sw.js is not the worker;"; fi
   [ -z "$problems" ] && ok "$msg" || bad "$msg -${problems}"

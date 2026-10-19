@@ -34,9 +34,10 @@ _spec.loader.exec_module(tbsecrets)
 
 PRODUCTS = ("AB", "TB", "CB")
 NAMES = [("APP_AB_HOST", "agile", "Agilebars"), ("APP_TB_HOST", "pmrm", "Timebars"), ("APP_CB_HOST", "ppm", "Costbars"),
-         ("BACKEND_HOST", "be2", "Strapi backend"), ("WEBSITE_HOST", "www", "Website"), ("CLOUD_HOST", "cloud", "Timebars Cloud")]
+         ("BACKEND_HOST", "be2", "Strapi backend"), ("WEBSITE_HOST", "www", "Website"), ("CLOUD_HOST", "cloud", "Timebars Cloud"),
+         ("HELP_HOST", "help", "Help library")]
 HOSTS = [k for k, _, _ in NAMES]
-SETTINGS = ["ACME_EMAIL", "EMAIL_FROM", "EMAIL_REPLY_TO", "APP_OFFLINE", "EXTRA_CORS_ORIGINS", "OP_URL",
+SETTINGS = ["ACME_EMAIL", "EMAIL_FROM", "EMAIL_REPLY_TO", "APP_OFFLINE", "EXTRA_CORS_ORIGINS", "OP_URL", "HELP_EDITORS",
             "SERVER_IP", "PROXY", "TLS", "LISTEN_IP"] + HOSTS
 KEYS = [k for k, _ in tbsecrets.KEYS]
 FIXED = {"POSTGRES_USER": "pgsuper", "STRAPI_DB_NAME": "strapi", "STRAPI_DB_USER": "strapi",
@@ -108,6 +109,17 @@ def resolve(env, sections):
         errs.append("TLS must be letsencrypt or internal")
     if v["APP_OFFLINE"] not in ("yes", "no"):
         errs.append("APP_OFFLINE must be yes or no")
+    # HELP_HOST may stay empty: it is CLOUD_HOST with "help" for "cloud" (staging "helps" for "clouds"). Timebars
+    # Cloud sends help.<domain> to cloud.<domain>/help, so the two must share everything after the first label.
+    cloud = clean_host(v["CLOUD_HOST"])
+    first, _, rest = cloud.partition(".")
+    if first not in ("cloud", "clouds") and cloud:
+        warns.append(f"CLOUD_HOST {cloud}: Timebars Cloud expects cloud.<domain> (or clouds.<domain>) for its help "
+                     "and dashboard names to redirect")
+    if not v["HELP_HOST"] and rest:
+        v["HELP_HOST"] = ("helps." if first == "clouds" else "help.") + rest
+    elif v["HELP_HOST"] and clean_host(v["HELP_HOST"]).partition(".")[2] != rest:
+        warns.append(f"HELP_HOST {v['HELP_HOST']} is not on the same domain as CLOUD_HOST ({rest}): its redirect will not reach Cloud")
     hosts = {}
     for k, base, _ in NAMES:
         h = clean_host(v[k])
@@ -134,6 +146,9 @@ def resolve(env, sections):
     for k in ("EMAIL_FROM", "EMAIL_REPLY_TO", "ACME_EMAIL"):
         if v[k] and not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", v[k]):
             errs.append(f"{k}: '{v[k]}' is not an email address")
+    for e in [e for e in v["HELP_EDITORS"].split(",") if e]:
+        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", e):
+            errs.append(f"HELP_EDITORS: '{e}' is not an email address (comma separated, no spaces)")
     if v["PROXY"] == "caddy" and v["TLS"] == "letsencrypt" and not v["ACME_EMAIL"]:
         errs.append("ACME_EMAIL is needed for Let's Encrypt (PROXY=caddy, TLS=letsencrypt)")
     if v["OP_URL"] and not v["OP_URL"].startswith("http"):
@@ -149,7 +164,7 @@ def resolve(env, sections):
 # ---------------------------------------------------------------------------------------------------
 def render(v):
     https = lambda h: f"https://{h}"
-    be, www, cloud = https(v["BACKEND_HOST"]), https(v["WEBSITE_HOST"]), https(v["CLOUD_HOST"])
+    be, www, cloud, help_ = https(v["BACKEND_HOST"]), https(v["WEBSITE_HOST"]), https(v["CLOUD_HOST"]), https(v["HELP_HOST"])
     run = {p: https(v[f"APP_{p}_HOST"]) for p in PRODUCTS}
     origins = [run[p] for p in PRODUCTS] + [www, cloud, be]
     origins += [o.strip() for o in v["EXTRA_CORS_ORIGINS"].split(",") if o.strip()]
@@ -162,14 +177,16 @@ def render(v):
                  ("DATABASE_USERNAME", FIXED["STRAPI_DB_USER"]), ("DATABASE_SSL", "false"), ("HOST", "0.0.0.0"),
                  ("PORT", "1337"), ("PUBLIC_URL", be), ("CORS_ORIGINS", ",".join(cors)),
                  ("EMAIL_FROM", v["EMAIL_FROM"]), ("EMAIL_REPLY_TO", v["EMAIL_REPLY_TO"] or v["EMAIL_FROM"])],
-        "tbwww": [("NEXTAUTH_URL", www), ("CLOUD_API_URL", f"{be}/api"), ("CLOUD_URL", cloud),
-                  ("RUN_URL_AB", run["AB"]), ("RUN_URL_TB", run["TB"]), ("RUN_URL_CB", run["CB"])],
+        "tbwww": [("NEXTAUTH_URL", www), ("CLOUD_API_URL", f"{be}/api"), ("CLOUD_URL", cloud), ("CLOUD_HELP_URL", help_),
+                  ("RUN_URL_AB", run["AB"]), ("RUN_URL_TB", run["TB"]), ("RUN_URL_CB", run["CB"]),
+                  ("HELP_EDITORS", v["HELP_EDITORS"])],
         "tbhelp": [("STRAPI_URL", "http://tbbe:1337/api"), ("NEXTAUTH_URL", cloud), ("CLOUD_API_URL", f"{be}/api"),
-                   ("CLOUD_WWW_URL", www), ("RUN_URL_AB", run["AB"]), ("RUN_URL_TB", run["TB"]), ("RUN_URL_CB", run["CB"])],
+                   ("CLOUD_WWW_URL", www), ("CLOUD_HELP_URL", help_), ("RUN_URL_AB", run["AB"]), ("RUN_URL_TB", run["TB"]),
+                   ("RUN_URL_CB", run["CB"]), ("HELP_EDITORS", v["HELP_EDITORS"])],
     }
     offline = v["APP_OFFLINE"] == "yes"
     sites = [{"host": v[f"APP_{p}_HOST"], "product": p, "offline": offline} for p in PRODUCTS]
-    runtime = {"apiUrl": f"{be}/api", "wwwUrl": www, "cloudUrl": cloud, "opUrl": v["OP_URL"], "aiBaseUrl": "/ai",
+    runtime = {"apiUrl": f"{be}/api", "wwwUrl": www, "cloudUrl": cloud, "helpUrl": help_, "opUrl": v["OP_URL"], "aiBaseUrl": "/ai",
                "sites": sites, "productPublicHost": {p: v[f"APP_{p}_HOST"] for p in PRODUCTS}}
     return env, runtime
 
@@ -178,7 +195,7 @@ def routes(v):
     """Every public name: (name, what it is, stack)."""
     rows = [(v[f"APP_{p}_HOST"], label, "tbrun") for (k, _, label), p in zip(NAMES[:3], PRODUCTS)]
     rows += [(v["BACKEND_HOST"], "Strapi backend", "tbbe"), (v["WEBSITE_HOST"], "Website", "tbwww"),
-             (v["CLOUD_HOST"], "Timebars Cloud", "tbhelp")]
+             (v["CLOUD_HOST"], "Timebars Cloud", "tbhelp"), (v["HELP_HOST"], "Help library (Timebars Cloud)", "tbhelp")]
     return rows
 
 
@@ -192,7 +209,8 @@ def runtime_text(rt):
     rows = [f'    {{ "host": {json.dumps(s["host"])}, "product": "{s["product"]}", "offline": {str(s["offline"]).lower()} }}'
             for s in rt["sites"]]
     return "\n".join(["{", f'  "apiUrl": {json.dumps(rt["apiUrl"])},', f'  "wwwUrl": {json.dumps(rt["wwwUrl"])},',
-                      f'  "cloudUrl": {json.dumps(rt["cloudUrl"])},', f'  "opUrl": {json.dumps(rt["opUrl"])},',
+                      f'  "cloudUrl": {json.dumps(rt["cloudUrl"])},', f'  "helpUrl": {json.dumps(rt["helpUrl"])},',
+                      f'  "opUrl": {json.dumps(rt["opUrl"])},',
                       f'  "aiBaseUrl": {json.dumps(rt["aiBaseUrl"])},', '  "sites": [', ",\n".join(rows), "  ],",
                       f'  "productPublicHost": {json.dumps(rt["productPublicHost"])}', "}"]) + "\n"
 

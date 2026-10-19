@@ -7,7 +7,7 @@ For organisations that run the Timebars suite (Agilebars, Timebars, Costbars) on
 | Path | What it is |
 |---|---|
 | [`DEPLOY_TB_SYSTEM_CONTAINER_OPTION_V2.md`](DEPLOY_TB_SYSTEM_CONTAINER_OPTION_V2.md) | **Start here**: configure every environment on a dev box, deploy each on its own server |
-| `tbapps.conf.example` | copy to `tbapps.conf`: one section per environment (DEV, STAGING, PROD, TRAINING) with its six names |
+| `tbapps.conf.example` | copy to `tbapps.conf`: one section per environment (DEV, STAGING, PROD, TRAINING) with its six names (the help name is made from the Cloud name) |
 | `scripts/apply.sh` | makes one package per environment in `envs/` (ignored by git) |
 | `scripts/00-prep-new-server.sh` | readies a new cloud server: admin user, SSH keys only, firewall |
 | `templates/` | what goes into each package: stacks, proxy, numbered scripts, `deploy-all.sh`, `00-push-to-server.sh` |

@@ -25,7 +25,7 @@ Your release: **«package release, e.g. v2.0.0»**. The image tags are in `VERSI
 1. **Docker Hub:** create a Docker Hub account and a **read-only access token**, and **reply with your Docker Hub user name**: we grant it pull access.
 2. **A dev box:** any Ubuntu machine with VS Code. Your developer configures every environment there; nothing runs on it.
 3. **A server per environment:** Ubuntu 24.04 or 26.04, 2+ cores, 4 GB RAM, 100 GB disk, patched under your policies, an admin user with `sudo` and SSH key login (guide section 2). Gather each server's IP address.
-4. **Names:** six per environment that you choose, for example `agile.prod.com`, `pmrm.prod.com`, `ppm.prod.com`, `be2.prod.com`, `www.prod.com`, `cloud.prod.com`. Your DNS team points them at the server. HTTPS comes from our proxy container with free Let's Encrypt certificates, or from **your own proxy**: the guide gives its routes. You can start before the IPs and DNS records exist.
+4. **Names:** seven per environment that you choose, for example `agile.prod.com`, `pmrm.prod.com`, `ppm.prod.com`, `be2.prod.com`, `www.prod.com`, `cloud.prod.com`, `help.prod.com`. Your DNS team points them at the server. HTTPS comes from our proxy container with free Let's Encrypt certificates, or from **your own proxy**: the guide gives its routes. You can start before the IPs and DNS records exist.
 
 ## 3. The installation in brief
 
