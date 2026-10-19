@@ -197,7 +197,11 @@ In the password prompt, enter the docker PAT, it may look like this: dckr_pat_xx
 > docker rm -f tbbe tbpgdb 2>/dev/null; docker volume rm postgres_db && rm -f $TB/.seeded
 > ```
 >
-> Then carry on with 7.3, or run `./deploy-all.sh`, which makes a new volume and loads the seed. To keep the data instead, restore the `secrets.env` that belongs to it from your vault.
+> Then carry on with 7.3, or run `./deploy-all.sh`, which makes a new volume and loads the seed. **To keep the data instead**, set the database to the passwords in this `secrets.env`; it changes no data and restarts Strapi:
+>
+> ```bash
+> bash $TB/scripts/08-reset-db-passwords.sh
+> ```
 
 **7.3 Create Docker network and volumes:**
 
@@ -359,7 +363,7 @@ Users' own project data lives in their browsers; their backup files and synced s
 | `docker logs tbproxy`: *could not get certificate*        | Let's Encrypt cannot reach the name: public DNS record and ports 80/443 from the internet, or use`TLS=internal`                                                       |
 | Login fails from a name                                   | the name is not in that environment's settings: fix it in`tbapps.conf`, `apply --force <ENV>`, push, `./deploy-all.sh`                                                |
 | Strapi admin login fails                                  | the seed's admin accounts have Timebars Ltd.'s passwords: reset yours ([section 8](#8-check-and-finish-the-environment)). After 5 failed tries Strapi waits 5 minutes |
-| Strapi:`password authentication failed for user "strapi"` | the `postgres_db` volume is older than this `secrets.env` (an earlier run on this server, or a new `secrets.env`): remove the volume and deploy again (the Important note before 7.3), or restore that volume's `secrets.env` from your vault |
+| Strapi:`password authentication failed for user "strapi"` | the `postgres_db` volume is older than this `secrets.env` (an earlier run on this server, or a new `secrets.env`): keep the data: `bash $TB/scripts/08-reset-db-passwords.sh`; or start clean: remove the volume and deploy again (the Important note before 7.3) |
 | `deploy-all.sh` loads the seed again                      | it only does that for a new database volume, or after a seed load that stopped half way (`$TB/.seeding`)                                                              |
 | No offline mode / no service worker                       | not HTTPS, or the certificate is not trusted (`TLS=internal`), or `APP_OFFLINE=no`                                                                                    |
 
