@@ -10,6 +10,8 @@ One person owns the configuration setup. In VS Code, in a clone of this repo on 
                                           envs/TRAINING ── 00-push-to-server.sh ──► TRAINING server scripts 01..07
 ```
 
+> **Already deployed, and a release adds new settings?** Re-deploy the easy way: [15. New env variables added, how to deploy them to existing environments?](#15-new-env-variables-added-how-to-deploy-them-to-existing-environments)
+
 Contents
 
 - [Deploy the Timebars System — Container Option](#deploy-the-timebars-system--container-option)
@@ -27,6 +29,7 @@ Contents
   - [12. Changes, updates and rollback](#12-changes-updates-and-rollback)
   - [13. Backups and restore](#13-backups-and-restore)
   - [14. Troubleshooting](#14-troubleshooting)
+  - [15. New env variables added, how to deploy them to existing environments?](#15-new-env-variables-added-how-to-deploy-them-to-existing-environments)
 
 ## 1. Who does what
 
@@ -361,3 +364,33 @@ Users' own project data lives in their browsers; their backup files and synced s
 | No offline mode / no service worker                       | not HTTPS, or the certificate is not trusted (`TLS=internal`), or `APP_OFFLINE=no`                                                                                    |
 
 For help, send the output of `bash $TB/scripts/06-health-check.sh` and `docker logs --tail 100 <container>`, never `secrets.env`, `.secrets.env` files, tokens or passwords.
+
+## 15. New env variables added, how to deploy them to existing environments?
+
+A new release can add settings to `tbapps.conf` (for example `HELP_EDITORS` and the help name `HELP_HOST`, October 2026). You do not delete the `envs` folders or start again: `apply --force` makes each package again from `tbapps.conf` and keeps `secrets.env`, and the push never overwrites what belongs to the server (its `secrets.env`, each stack's `.secrets.env`, the running tags in `.env`, uploads and backups).
+
+**On the dev box**, in VS Code, in your tbown clone:
+
+```bash
+git pull                                       # the release: new scripts, VERSION.md, tbapps.conf.example
+diff tbapps.conf.example tbapps.conf           # see which new settings the example has and your file does not
+# add the new settings to tbapps.conf: [ALL] for every environment, or the [ENV] section for one
+bash scripts/apply.sh --check                  # FIX lines mean a setting is missing or wrong; nothing is written
+bash scripts/apply.sh --force STAGING          # once per environment: STAGING, PROD ...
+bash envs/STAGING/00-push-to-server.sh <server> /docker/compose
+```
+
+If a new setting adds a name (as `HELP_HOST` did: `help.` in production, `helps.` in staging), send the new row of the *Names* table in `envs/<ENV>/DEPLOY.md` to your DNS team before you deploy.
+
+**On the server:**
+
+```bash
+cd $TB && bash scripts/05-backup.sh            # a backup first
+./deploy-all.sh                                # recreates only the containers whose settings or image changed
+bash scripts/07-check-urls.sh                  # every name answers, through the proxy
+```
+
+Then do any one-time step the release notes name. For the help release that is: give your Strapi users row `primary_role` Administrator (your email must also be in `HELP_EDITORS`), then run **Update All** on Cloud `/update-help` and, if you run tbwww, on `/update-articles`.
+
+Repeat for the next environment. Work through staging first, then production.
+
