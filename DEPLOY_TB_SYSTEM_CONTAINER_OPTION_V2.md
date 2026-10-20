@@ -318,7 +318,17 @@ Where to get the keys:
 | `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` | [dashboard.stripe.com](https://dashboard.stripe.com) → *Developers* → *API keys* (sandbox for everything but PROD). Empty = no checkout                                                               |
 | `STRAPI_ADMIN_TOKEN`                          | made after the first deploy ([section 8](#8-check-and-finish-the-environment))                                                                                                                          |
 
-After changing `secrets.env`, run `bash $TB/scripts/03-make-passwords.sh && cd $TB && ./deploy-all.sh`. Never change a database password after the first deploy: the database keeps the one it was created with.
+**One place for keys: `$TB/secrets.env` on the server.** Edit only that file, then send it out to the containers:
+
+```bash
+nano $TB/secrets.env
+bash $TB/scripts/03-make-passwords.sh          # copies secrets.env into each stack's .secrets.env
+cd $TB/tbhelp && docker compose up -d --force-recreate   # each stack that uses the key (or: cd $TB && ./deploy-all.sh)
+```
+
+Never edit a stack's `.secrets.env` (`$TB/tbwww/.secrets.env` ...): the next `03-make-passwords.sh` writes it again from `secrets.env`. `envs/<ENV>/secrets.env` on the dev box is only the starting copy for a server's first deploy: the push sends it once, and after that the server's copy is the real one, so changing it on the dev box does nothing.
+
+Settings that are not secret (names, addresses, `HELP_EDITORS`) have one place too: `tbapps.conf` on the dev box, then `apply --force <ENV>`, push, deploy ([section 12](#12-changes-updates-and-rollback)). Never change a database password after the first deploy: the database keeps the one it was created with.
 
 ## 12. Changes, updates and rollback
 
