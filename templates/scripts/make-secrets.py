@@ -83,6 +83,15 @@ def main():
         return 1
     env = read_kv(os.path.join(ENV_DIR, "environment.env")).get("ENVIRONMENT", "?")
     vals = read_kv(SECRETS)
+    # A value that is only in a stack's .secrets.env (pasted there by hand, or secrets.env replaced) is taken
+    # back into secrets.env instead of being wiped when the stack files are written again below
+    adopted = []
+    for stack, pairs in STACKS.items():
+        old = read_kv(os.path.join(ENV_DIR, stack, ".secrets.env"))
+        for name, src in pairs:
+            if not vals.get(src) and old.get(name):
+                vals[src] = old[name]
+                adopted.append(src)
     # A database container already on this server means its volume has passwords from an earlier secrets.env
     # (deploy-all.sh makes the empty volume first, so the volume alone says nothing)
     if not vals.get("STRAPI_DB_PASSWORD") and os.system("docker inspect tbpgdb >/dev/null 2>&1") == 0:
@@ -95,6 +104,10 @@ def main():
         if not vals.get(k):
             vals[k] = ",".join(rnd(32) for _ in range(4)) if k == "APP_KEYS" else rnd()
             made.append(k)
+    if adopted:
+        print(f"Taken back into secrets.env from the stacks' .secrets.env: {', '.join(sorted(set(adopted)))}")
+    generated = list(made)
+    made += [k for k in dict.fromkeys(adopted) if k not in made]
     if made:
         # keep the user's layout: rewrite the known lines in place, append any that are missing
         lines = open(SECRETS).read().splitlines()
@@ -106,7 +119,8 @@ def main():
                 done.add(m.group(1))
         lines += [f"{k}={vals[k]}" for k in made if k not in done]
         write_private(SECRETS, "\n".join(lines) + "\n")
-        print(f"Made on this machine for {env}: {', '.join(made)}")
+        if generated:
+            print(f"Made on this machine for {env}: {', '.join(generated)}")
     else:
         os.chmod(SECRETS, 0o600)
     for stack, pairs in STACKS.items():
