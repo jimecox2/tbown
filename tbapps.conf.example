@@ -6,7 +6,8 @@
 # delete the ones you do not need, or add your own name (letters only). A section may repeat any [ALL]
 # setting to override it. Each section types its own six names (no two environments share a name); the help
 # library's name (HELP_HOST) is made from CLOUD_HOST unless a section types it.
-# Only the section named PROD is open to search engines; every other environment sends "noindex".
+# Only the section named PROD is open to search engines; every other environment sends "noindex", and its Cloud
+# and website show a dark red nav bar with the section name (TB_ENVIRONMENT), so it is not mistaken for PROD.
 # Plain KEY=VALUE lines; hostnames only (no https://, no / at the end); no comments after a value.
 
 [ALL]

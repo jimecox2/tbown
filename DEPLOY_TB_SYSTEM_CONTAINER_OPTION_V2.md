@@ -109,7 +109,7 @@ Open `tbapps.conf` in VS Code. `[ALL]` holds what every environment shares; each
 | `HELP_EDITORS`                                                                            | `[ALL]`                | emails (comma separated, no spaces) who may push content into Strapi: Cloud `/update-help`, website `/update-articles`. Each must also be an Administrator in Strapi. Empty = nobody |
 | `GEMINI_API_KEY`, `SENDGRID_API_KEY`                                                      | `[ALL]`, optional      | recommended: leave empty and paste them on each server ([section 11](#11-keys-and-passwords))                                                         |
 
-Only the section named `PROD` is open to search engines; every other environment sends `noindex`.
+Only the section named `PROD` is open to search engines; every other environment sends `noindex`. `apply` also writes the section name as `TB_ENVIRONMENT` into the Cloud and website `.env.local`: every environment except `PROD` shows a dark red nav bar there with its name (`STAGING`, `DEV`, `TRAINING`).
 
 Then apply your edits to tbapps.conf to create envs folders.
 
@@ -278,6 +278,7 @@ Repeat sections 5 to 8 with the next package and its server, for example `bash e
 | -------------- | ------------------------------ | --------------------------- | -------------------------- |
 | Stripe keys    | sandbox`sk_test_` / `pk_test_` | live`sk_live_` / `pk_live_` | sandbox, or none           |
 | Search engines | kept out (`noindex`)           | indexed                     | kept out                   |
+| Cloud and website nav bar | dark red, with the name | normal              | dark red, with the name    |
 | Seed data      | loaded on the first deploy     | loaded on the first deploy  | loaded on the first deploy |
 
 What you load into an environment after that (your own backup, a copy of PROD) is up to you: `bash $TB/scripts/04-restore.sh <dump> <uploads>` ([section 13](#13-backups-and-restore)).

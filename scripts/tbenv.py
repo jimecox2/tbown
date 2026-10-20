@@ -179,10 +179,10 @@ def render(v):
                  ("EMAIL_FROM", v["EMAIL_FROM"]), ("EMAIL_REPLY_TO", v["EMAIL_REPLY_TO"] or v["EMAIL_FROM"])],
         "tbwww": [("NEXTAUTH_URL", www), ("CLOUD_API_URL", f"{be}/api"), ("CLOUD_URL", cloud), ("CLOUD_HELP_URL", help_),
                   ("RUN_URL_AB", run["AB"]), ("RUN_URL_TB", run["TB"]), ("RUN_URL_CB", run["CB"]),
-                  ("HELP_EDITORS", v["HELP_EDITORS"])],
+                  ("HELP_EDITORS", v["HELP_EDITORS"]), ("TB_ENVIRONMENT", v["ENVIRONMENT"])],
         "tbhelp": [("STRAPI_URL", "http://tbbe:1337/api"), ("NEXTAUTH_URL", cloud), ("CLOUD_API_URL", f"{be}/api"),
                    ("CLOUD_WWW_URL", www), ("CLOUD_HELP_URL", help_), ("RUN_URL_AB", run["AB"]), ("RUN_URL_TB", run["TB"]),
-                   ("RUN_URL_CB", run["CB"]), ("HELP_EDITORS", v["HELP_EDITORS"])],
+                   ("RUN_URL_CB", run["CB"]), ("HELP_EDITORS", v["HELP_EDITORS"]), ("TB_ENVIRONMENT", v["ENVIRONMENT"])],
     }
     offline = v["APP_OFFLINE"] == "yes"
     sites = [{"host": v[f"APP_{p}_HOST"], "product": p, "offline": offline} for p in PRODUCTS]
