@@ -83,6 +83,13 @@ def main():
         return 1
     env = read_kv(os.path.join(ENV_DIR, "environment.env")).get("ENVIRONMENT", "?")
     vals = read_kv(SECRETS)
+    # A database container already on this server means its volume has passwords from an earlier secrets.env
+    # (deploy-all.sh makes the empty volume first, so the volume alone says nothing)
+    if not vals.get("STRAPI_DB_PASSWORD") and os.system("docker inspect tbpgdb >/dev/null 2>&1") == 0:
+        print("STOP: this secrets.env has no database passwords, but a Timebars database (tbpgdb) already runs on this")
+        print("server. New passwords would not match that database. Copy the secrets.env of the folder that made it")
+        print("(or your vault copy) here. Only if that data is not needed: the Important note before guide step 7.3.")
+        return 1
     made = []
     for k in PASSWORDS:
         if not vals.get(k):

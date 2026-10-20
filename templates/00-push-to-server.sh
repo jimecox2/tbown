@@ -66,6 +66,14 @@ ROOT="$PARENT/tbApps"
 other=$(run "grep -s '^ENVIRONMENT=' '$ROOT/environment.env' | cut -d= -f2-" || true)
 [ -z "$other" ] || [ "$other" = "$ENV_NAME" ] || {
   echo "$ROOT on $SERVER holds the $other environment. One environment per server: pick the right server."; exit 1; }
+# One tbApps per server: a second folder would get a new secrets.env (new passwords, empty keys) and break
+# the database that is already there. Refuse when ~/.bashrc already points TB at another package.
+prev=$(run "grep -s '^export TB=' ~/.bashrc | sed 's/^export TB=//; s/[[:space:]].*//'" || true)
+if [ -n "$prev" ] && [ "$prev" != "$ROOT" ] && run "[ -f '$prev/environment.env' ]"; then
+  echo "$SERVER already has this environment in $prev (TB in ~/.bashrc), not in $ROOT."
+  echo "Push to that folder instead:  bash envs/$ENV_NAME/00-push-to-server.sh $SERVER ${prev%/tbApps}"
+  echo "A second folder would get a new secrets.env: new database passwords and none of your keys."; exit 1
+fi
 run "mkdir -p '$ROOT'" || {
   echo "Cannot create $ROOT on $SERVER. If $PARENT belongs to root, run there once:"
   echo "  sudo mkdir -p $ROOT && sudo chown \$USER: $ROOT"; exit 1; }
