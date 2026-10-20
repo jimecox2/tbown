@@ -30,6 +30,7 @@ Contents
   - [13. Backups and restore](#13-backups-and-restore)
   - [14. Troubleshooting](#14-troubleshooting)
   - [15. New env variables added, how to deploy them to existing environments?](#15-new-env-variables-added-how-to-deploy-them-to-existing-environments)
+  - [16. Change a key, for example a new Strapi admin token](#16-change-a-key-for-example-a-new-strapi-admin-token)
 
 ## 1. Who does what
 
@@ -412,3 +413,36 @@ Then do any one-time step the release notes name. For the help release that is: 
 
 Repeat for the next environment. Work through staging first, then production.
 
+## 16. Change a key, for example a new Strapi admin token
+
+You only change one file: the `STRAPI_ADMIN_TOKEN=` line in `$TB/secrets.env`. Do this on the server (the same steps for any other key in `secrets.env`: Gemini, SendGrid, Stripe):
+
+**1. Put the token in:**
+
+```bash
+nano $TB/secrets.env
+```
+
+The line must read `STRAPI_ADMIN_TOKEN=<new token>`, all on one line, no spaces or quotes.
+
+**2. Check the token against Strapi** (`200` = good, `401` = the token itself is wrong). Use this environment's backend name (`BACKEND_HOST`, e.g. `be2.timebars.com`, staging `be2s.timebars.com`):
+
+```bash
+T=$(grep '^STRAPI_ADMIN_TOKEN=' $TB/secrets.env | cut -d= -f2-); curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $T" 'https://be2.timebars.com/api/help-articles?pagination[pageSize]=1'
+```
+
+**3. Copy it to the apps and restart them.** This keeps the running tags (`up -d` reads each folder's `.env` and does not pull):
+
+```bash
+bash $TB/scripts/03-make-passwords.sh
+cd $TB/tbhelp && docker compose up -d --force-recreate
+cd $TB/tbwww && docker compose up -d --force-recreate
+```
+
+**4. Confirm Cloud has it.** This should print `set`:
+
+```bash
+docker exec tbhelpapp sh -c 'test -n "$STRAPI_ADMIN_TOKEN" && echo set || echo empty'
+```
+
+If step 2 says `401`, make the token in this environment's own Strapi (`https://<BACKEND_HOST>/admin` → Settings → API Tokens), not another environment's, with token type **Full access**. A token made before this server's `secrets.env` was made again does not work either: a new `API_TOKEN_SALT` makes old tokens invalid. If step 4 says `empty`, check `grep -c '^STRAPI_ADMIN_TOKEN=.' $TB/tbhelp/.secrets.env` (1 = the file has it).
