@@ -383,7 +383,7 @@ For help, send the output of `bash $TB/scripts/06-health-check.sh` and `docker l
 
 A new release can add settings to `tbapps.conf` (for example `HELP_EDITORS` and the help name `HELP_HOST`, October 2026). You do not delete the `envs` folders or start again: `apply --force` makes each package again from `tbapps.conf` and keeps `secrets.env`, and the push never overwrites what belongs to the server (its `secrets.env`, each stack's `.secrets.env`, the running tags in `.env`, uploads and backups).
 
-> **Important: `deploy-all.sh` deploys the tags in `VERSION.md`, not the ones running.** If you built and deployed newer images yourself, put their tags in `VERSION.md` first (or `envs/<ENV>/VERSION.md` after apply), or skip `deploy-all.sh` and run `./deploy.sh` in only the stacks whose settings changed, pressing Enter to keep the running tag. Otherwise every stack goes back to the `VERSION.md` tag, and an older Strapi will not start on a database a newer one already changed.
+> **`deploy-all.sh` never goes back to an older tag:** it deploys the newer of the running tag and the one in `VERSION.md`. To roll back, run `./deploy.sh` in that stack and type the tag.
 
 **On the dev box**, in VS Code, in your tbown clone:
 

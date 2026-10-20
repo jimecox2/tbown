@@ -58,7 +58,9 @@ listed=$(awk -F'|' -v img="\`$STACK_IMAGE\`" '$3 ~ img {gsub(/[ `]/,"",$4); if (
 echo "Deployed now: ${current:-nothing}    In VERSION.md: ${listed:-not listed}"
 default=${current:-$listed}
 if [ "${TB_AUTO:-}" = 1 ]; then
-  tag=${listed:-$current}
+  # deploy-all.sh never goes back: the newer of the running tag and VERSION.md (release tags are dates).
+  # A rollback is done by hand: ./deploy.sh in that stack, and type the tag.
+  tag=$(printf '%s\n' "$current" "$listed" | grep -v '^$' | sort -V | tail -1)
   echo "Tag to deploy: $tag"
 else
   read -r -p "Tag to deploy (press Enter for '${default}'): " tag
