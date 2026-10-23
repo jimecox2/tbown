@@ -1,6 +1,6 @@
 
 # git add commit push
-acp "message"
+acp "miscl"
 
 This repo is for easing the docker container deployment and variables and secrets.
 Remember there are two ways to make changes and push them out.
