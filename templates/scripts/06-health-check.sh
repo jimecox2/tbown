@@ -10,8 +10,10 @@ PROXY=$(grep -s '^PROXY=' "$ROOT/environment.env" | cut -d= -f2-)
 LISTEN_IP=$(grep -s '^LISTEN_IP=' "$ROOT/environment.env" | cut -d= -f2-); LISTEN_IP=${LISTEN_IP:-127.0.0.1}   # where the apps listen
 echo "Environment: $(grep -s '^ENVIRONMENT=' "$ROOT/environment.env" | cut -d= -f2-)  (proxy: ${PROXY:-?})"
 echo "Containers (running tag / tag in VERSION.md):"
+BLOG=$([ -d "$ROOT/tbblog" ] && echo yes)
+ADMIN_IP=$(grep -s '^BLOG_ADMIN_IP=' "$ROOT/environment.env" | cut -d= -f2-); ADMIN_IP=${ADMIN_IP:-127.0.0.1}
 pairs="postgres:tbpgdb tbbe:tbbe tbwww:tbwwwp tbhelp:tbhelpapp tbrun:tbrun"
-[ "$PROXY" = caddy ] && pairs="$pairs proxy:tbproxy"
+[ -n "$BLOG" ] && pairs="$pairs tbblog:tbblog-strapi tbblog:tbblog-web"
 for pair in $pairs; do
   stack=${pair%%:*}; c=${pair#*:}
   s=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$c" 2>/dev/null) || s=missing
@@ -20,6 +22,10 @@ for pair in $pairs; do
   note=""; [ -n "$listed" ] && [ "$tag" != "$listed" ] && note="  (VERSION.md: $listed)"
   case "$s" in healthy|running) ok "$c $s, ${tag:-?}$note" ;; *) bad "$c $s - cd $ROOT/$stack && ./deploy.sh" ;; esac
 done
+if [ "$PROXY" = caddy ]; then   # deploy-all.sh does not start the proxy, so a stopped one is only a note
+  s=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' tbproxy 2>/dev/null) || s="not running"
+  case "$s" in healthy|running) ok "tbproxy $s" ;; *) printf '  \033[33m--\033[0m    %s\n' "tbproxy $s (start it: cd $ROOT/proxy && ./deploy.sh)" ;; esac
+fi
 docker network inspect tbnet >/dev/null 2>&1 && ok "network tbnet" || bad "network tbnet missing - ./deploy-all.sh"
 echo "Services (this machine):"
 docker exec tbpgdb pg_isready -q 2>/dev/null && ok "PostgreSQL accepting connections" || bad "PostgreSQL"
@@ -31,6 +37,10 @@ code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: applicat
 case "$code" in 401|400) ok "App proxy /ai/ reaches the AI service ($code)";; *) bad "App proxy /ai/ ($code) - are tbrun and tbhelpapp both on network tbnet?";; esac
 curl -fsS http://$LISTEN_IP:8687/sw.js 2>/dev/null | head -1 | grep -q TB-OFFLINE-SW && ok "App + offline worker" || bad "App sw.js"
 curl -fsS http://$LISTEN_IP:8687/runtime-config.json >/dev/null 2>&1 && ok "runtime-config.json served" || bad "runtime-config.json"
+if [ -n "$BLOG" ]; then
+  code=$(curl -s -o /dev/null -w '%{http_code}' http://$ADMIN_IP:1339/_health); [ "$code" = 204 ] && ok "Blog Strapi /_health (admin http://$ADMIN_IP:1339/admin)" || bad "Blog Strapi /_health ($code)"
+  code=$(curl -s -o /dev/null -w '%{http_code}' http://$LISTEN_IP:3011/);        [ "$code" = 200 ] && ok "Blog home page" || bad "Blog home page ($code)"
+fi
 echo "Machine:"
 df -h / | awk 'NR==2 {print "  disk used " $5 " of " $2}'
 free -h | awk '/Mem:/ {print "  memory used " $3 " of " $2}'

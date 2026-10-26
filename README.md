@@ -31,7 +31,7 @@ cd $TB && ./deploy-all.sh
 
 ## Not in here
 
-- **The application images** — pulled from Docker Hub (`jimecox807/tbrun`, `tbbe`, `tbwwwp`, `tbhelpapp`).
+- **The application images** — pulled from Docker Hub (`jimecox807/tbrun`, `tbbe`, `tbwwwp`, `tbhelpapp`, and for the optional blog `tbblog-strapi`, `tbblog-web`).
 - **Your settings and secrets** — `tbapps.conf` and `envs/` stay on the dev box; passwords are made on each server.
 
 Questions: Timebars Ltd. — jcox@tbcox.com

@@ -1,0 +1,50 @@
+# The blog (optional, BLOG_HOST in tbapps.conf): Strapi 5 (tbblog-strapi) and the Next.js blog (tbblog-web).
+# Each container has its own settings and secrets: strapi/.env.local + strapi/.secrets.env, web/.env.local +
+# web/.secrets.env (chmod 600, read at run time); the image tag (one for both) in .env (deploy.sh).
+# Strapi uses its own database "tbblog" on tbpgdb (deploy.sh makes it), never tbbe's "strapi".
+# tbblog-web: port 3011 on this server (LISTEN_IP); the public blog name goes through the proxy (http://tbblog-web:3011).
+# tbblog-strapi: port 1339 on BLOG_ADMIN_IP only, for the admin (/admin). Never make it public; the blog serves its images.
+services:
+  tbblog-strapi:
+    image: jimecox807/tbblog-strapi:${TBBLOG_TAG:?run ./deploy.sh first, it sets TBBLOG_TAG in .env}
+    container_name: tbblog-strapi
+    restart: always
+    env_file: [strapi/.env.local, strapi/.secrets.env]
+    environment:
+      NODE_ENV: production
+    ports:
+      - "127.0.0.1:1339:1339"
+    volumes:
+      - ./uploads:/opt/app/public/uploads    # uploaded images; owned by uid 1000 (node)
+    networks:
+      - tbnet
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:1339/_health',r=>process.exit(r.statusCode<400?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s     # Strapi takes a while to boot
+
+  tbblog-web:
+    image: jimecox807/tbblog-web:${TBBLOG_TAG:?run ./deploy.sh first, it sets TBBLOG_TAG in .env}
+    container_name: tbblog-web
+    restart: always
+    env_file: [web/.env.local, web/.secrets.env]
+    environment:
+      NODE_ENV: production
+    ports:
+      - "127.0.0.1:3011:3011"
+    depends_on:
+      - tbblog-strapi
+    networks:
+      - tbnet
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3011/',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  tbnet:
+    external: true          # shared by every Timebars container; created by deploy-all.sh

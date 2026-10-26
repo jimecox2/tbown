@@ -12,19 +12,20 @@
 # the guide's commands (cd $TB/tbbe && ./deploy.sh) work as written.
 # Safe to run again after you change files here: what belongs to the server is never overwritten - its
 # passwords (secrets.env once it exists there, each stack's .secrets.env), the running tags (.env), the seed
-# markers, uploaded files and backups.
+# markers, uploaded files (tbbe and the blog) and backups. A blog installed there by hand keeps its
+# tbblog/strapi.env.local and web.env.local (not in this package): 03-make-passwords.sh takes its secrets from them.
 set -euo pipefail
 cd "$(dirname "$0")"
 ENV_NAME=$(grep '^ENVIRONMENT=' environment.env | cut -d= -f2-)
 SERVER_OWNED=(--exclude '.env' --exclude '.secrets.env' --exclude 'secrets.env' --exclude '.seeded' --exclude '.seeding'
-              --exclude 'tbbe/public/uploads/***' --exclude 'restore-*.log' --exclude 'caddy-root.crt'
+              --exclude 'tbbe/public/uploads/***' --exclude 'tbblog/uploads/***' --exclude 'restore-*.log' --exclude 'caddy-root.crt'
               --exclude '00-push-to-server.sh' --exclude '.push-target' --exclude '__pycache__')
 
 if [ "${1:-}" = --tar ]; then
   out="../${ENV_NAME}-$(date +%Y%m%d-%H%M).tar.gz"
   n=$(basename "$PWD")
-  tar czf "$out" --transform "s#^$n#tbApps#" --exclude="$n/.env" --exclude="$n/*/.env" --exclude="$n/*/.secrets.env" \
-      --exclude="$n/.seeded" --exclude="$n/.seeding" --exclude="$n/tbbe/public/uploads/*" --exclude="$n/restore-*.log" \
+  tar czf "$out" --transform "s#^$n#tbApps#" --exclude="$n/.env" --exclude="$n/*/.env" --exclude="$n/*/.secrets.env" --exclude="$n/*/*/.secrets.env" \
+      --exclude="$n/.seeded" --exclude="$n/.seeding" --exclude="$n/tbbe/public/uploads/*" --exclude="$n/tbblog/uploads/*" --exclude="$n/restore-*.log" \
       --exclude="$n/caddy-root.crt" --exclude="$n/00-push-to-server.sh" --exclude="$n/.push-target" --exclude='__pycache__' -C .. "$n"
   chmod 600 "$out"
   echo "Written: $(cd .. && pwd)/$(basename "$out")"

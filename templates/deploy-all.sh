@@ -3,8 +3,8 @@
 # On the server, as your admin user (no sudo), after 01-install-docker.sh and docker login:
 #   cd $TB && ./deploy-all.sh
 # It runs 02-create-volumes.sh, 03-make-passwords.sh, ./deploy.sh in postgres, tbbe, then 04-restore.sh (the
-# seed data, first deploy only), ./deploy.sh in tbwww, tbhelp, tbrun and proxy (PROXY=caddy), and
-# 06-health-check.sh. Safe to run again: it keeps the passwords and the data, and recreates only the
+# seed data, first deploy only), ./deploy.sh in tbwww, tbhelp, tbrun and tbblog (only with a blog), and
+# 06-health-check.sh. It never starts the proxy: with PROXY=caddy run  cd $TB/proxy && ./deploy.sh  yourself. Safe to run again: it keeps the passwords and the data, and recreates only the
 # containers whose image or settings changed. The same steps one by one: the guide, or DEPLOY.md.
 set -uo pipefail
 cd "$(dirname "$0")" || exit 1
@@ -27,7 +27,9 @@ step "Passwords (03-make-passwords.sh)"
 bash scripts/03-make-passwords.sh || exit 1
 
 export TB_AUTO=1
-for s in postgres tbbe tbwww tbhelp tbrun; do
+stacks="postgres tbbe tbwww tbhelp tbrun"
+[ -d tbblog ] && stacks="$stacks tbblog"     # the blog: only in environments with BLOG_HOST
+for s in $stacks; do
   step "$s"
   (cd "$s" && ./deploy.sh) || die "Stopped at $s - fix the message above, then run ./deploy-all.sh again."
   if [ "$s" = tbbe ]; then
@@ -41,11 +43,10 @@ for s in postgres tbbe tbwww tbhelp tbrun; do
   fi
 done
 
+step "proxy"
 if [ "$PROXY" = caddy ]; then
-  step "proxy (Caddy)"
-  (cd proxy && ./deploy.sh) || die "Stopped at the proxy - fix the message above, then run ./deploy-all.sh again."
+  echo "Not started here. To start or update Caddy (certificates for every name):  cd $PWD/proxy && ./deploy.sh"
 else
-  step "proxy"
   echo "PROXY=own: no Caddy here. Your proxy sends each name to this machine - routes in proxy/Caddyfile and DEPLOY.md."
 fi
 

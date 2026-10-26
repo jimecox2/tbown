@@ -17,6 +17,9 @@
 #   STACK_CONTAINER  container name, e.g. tbwwwp
 #   STACK_REQUIRED   settings that must be set in .env.local or .secrets.env (space separated; may be empty)
 #   STACK_NO_ENV_LOCAL=1  the stack has neither file (tbrun: runtime-config.json; proxy: Caddyfile)
+#   STACK_ENV_DIRS   sub-folders that each hold .env.local and .secrets.env, one per container (tbblog: "strapi web");
+#                    unset = the stack folder itself
+#   STACK_EXTRA_IMAGES  more images pulled with the same tag (tbblog: jimecox807/tbblog-web)
 # Optional functions:
 #   stack_check          extra checks before deploying (return non-zero to stop)
 #   stack_check_tag TAG  checks on the chosen tag (return non-zero to stop)
@@ -32,14 +35,19 @@ docker info >/dev/null 2>&1 || die "Cannot use Docker as $USER (id -nG must list
 
 # --- 2. settings ------------------------------------------------------------------------------
 if [ "${STACK_NO_ENV_LOCAL:-}" != 1 ]; then
-  [ -f .env.local ] || die "Missing .env.local - this environment folder is incomplete: run scripts/apply.sh on the dev box again (--force)."
-  [ -f .secrets.env ] || die "Missing .secrets.env - run ../deploy-all.sh (it makes it from ../secrets.env), or: bash ../scripts/03-make-passwords.sh"
-  for f in .env.local .secrets.env; do
-    if [ "$(stat -c %a $f)" != 600 ]; then chmod 600 $f && echo "Set $f to chmod 600."; fi
+  files=""
+  for d in ${STACK_ENV_DIRS:-.}; do
+    [ -f $d/.env.local ] || die "Missing $d/.env.local - this environment folder is incomplete: run scripts/apply.sh on the dev box again (--force)."
+    [ -f $d/.secrets.env ] || die "Missing $d/.secrets.env - run ../deploy-all.sh (it makes it from ../secrets.env), or: bash ../scripts/03-make-passwords.sh"
+    for f in $d/.env.local $d/.secrets.env; do
+      if [ "$(stat -c %a $f)" != 600 ]; then chmod 600 $f && echo "Set $f to chmod 600."; fi
+    done
+    files="$files $d/.env.local $d/.secrets.env"
   done
   missing=""
-  for v in ${STACK_REQUIRED:-}; do
-    val=$(grep -hE "^$v=" .env.local .secrets.env | tail -1 | cut -d= -f2-)
+  for v in ${STACK_REQUIRED:-}; do      # NAME, or dir/NAME for one container's files
+    case "$v" in */*) look="${v%%/*}/.env.local ${v%%/*}/.secrets.env"; v=${v#*/} ;; *) look=$files ;; esac
+    val=$(grep -hE "^$v=" $look | tail -1 | cut -d= -f2-)
     [ -z "$val" ] && missing="$missing $v"
   done
   [ -z "$missing" ] || die "Not set:$missing - fill it in ../secrets.env, then run ../deploy-all.sh"
@@ -72,9 +80,11 @@ if declare -F stack_check_tag >/dev/null; then stack_check_tag "$tag" || exit 1;
 
 # --- 5. pull and start ------------------------------------------------------------------------
 # Release tags never change, so an image already on this machine is used as is (TB_PULL=1 pulls anyway)
-if [ "${TB_PULL:-}" = 1 ] || ! docker image inspect "$STACK_IMAGE:$tag" >/dev/null 2>&1; then
-  docker pull "$STACK_IMAGE:$tag" || die "Pull failed: check the tag exists, and your login (docker login)."
-fi
+for img in "$STACK_IMAGE" ${STACK_EXTRA_IMAGES:-}; do
+  if [ "${TB_PULL:-}" = 1 ] || ! docker image inspect "$img:$tag" >/dev/null 2>&1; then
+    docker pull "$img:$tag" || die "Pull failed for $img:$tag: check the tag exists, and your login (docker login)."
+  fi
+done
 echo "$STACK_TAG_VAR=$tag" > .env
 docker compose up -d || die "docker compose up failed - see the message above."
 

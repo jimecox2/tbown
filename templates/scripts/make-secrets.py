@@ -28,6 +28,10 @@ KEYS = [  # pasted by you; empty = that feature is off
 ]
 PASSWORDS = ["POSTGRES_PASSWORD", "STRAPI_DB_PASSWORD", "PGADMIN_DEFAULT_PASSWORD", "APP_KEYS", "API_TOKEN_SALT",
              "ADMIN_JWT_SECRET", "TRANSFER_TOKEN_SALT", "JWT_SECRET", "WWW_NEXTAUTH_SECRET", "CLOUD_NEXTAUTH_SECRET"]
+# The blog's own (only made when this environment has a blog: a tbblog folder). Its Strapi 5 never shares tbbe's.
+BLOG_PASSWORDS = ["TBBLOG_DB_PASSWORD", "TBBLOG_APP_KEYS", "TBBLOG_API_TOKEN_SALT", "TBBLOG_ADMIN_JWT_SECRET",
+                  "TBBLOG_TRANSFER_TOKEN_SALT", "TBBLOG_JWT_SECRET", "TBBLOG_ENCRYPTION_KEY", "TBBLOG_AUTH_SECRET",
+                  "TBBLOG_REVALIDATE_SECRET"]
 # What each stack reads: (name in the container, name in secrets.env)
 STACKS = {
     "postgres": [("POSTGRES_PASSWORD", "POSTGRES_PASSWORD"), ("STRAPI_DB_PASSWORD", "STRAPI_DB_PASSWORD"),
@@ -39,7 +43,15 @@ STACKS = {
               ("STRIPE_SECRET_KEY", "STRIPE_SECRET_KEY"), ("STRIPE_PUBLISHABLE_KEY", "STRIPE_PUBLISHABLE_KEY")],
     "tbhelp": [("GEMINI_API_KEY", "GEMINI_API_KEY"), ("NEXTAUTH_SECRET", "CLOUD_NEXTAUTH_SECRET"),
                ("STRAPI_ADMIN_TOKEN", "STRAPI_ADMIN_TOKEN")],
+    "tbblog/strapi": [("DATABASE_PASSWORD", "TBBLOG_DB_PASSWORD"), ("APP_KEYS", "TBBLOG_APP_KEYS"),
+                      ("API_TOKEN_SALT", "TBBLOG_API_TOKEN_SALT"), ("ADMIN_JWT_SECRET", "TBBLOG_ADMIN_JWT_SECRET"),
+                      ("TRANSFER_TOKEN_SALT", "TBBLOG_TRANSFER_TOKEN_SALT"), ("JWT_SECRET", "TBBLOG_JWT_SECRET"),
+                      ("ENCRYPTION_KEY", "TBBLOG_ENCRYPTION_KEY")],
+    "tbblog/web": [("AUTH_SECRET", "TBBLOG_AUTH_SECRET"), ("REVALIDATE_SECRET", "TBBLOG_REVALIDATE_SECRET")],
 }
+# A blog installed by hand before tbown had it (tbblog/strapi.env.local, tbblog/web.env.local): its secrets are
+# taken into secrets.env the first time, so the database password, logins, API tokens and webhook keep working
+LEGACY = {"tbblog/strapi": "tbblog/strapi.env.local", "tbblog/web": "tbblog/web.env.local"}
 
 
 def rnd(n=40):
@@ -74,6 +86,8 @@ def template(env, vals):
     out += ["", "# === Passwords: made by scripts/03-make-passwords.sh where this environment runs, the first time ===",
             "# Leave them empty here. Never change one after the first deploy."]
     out += [f"{k}={vals.get(k, '')}" for k in PASSWORDS]
+    out += ["", "# === The blog's passwords (only with BLOG_HOST): made the same way, or taken from a blog installed by hand ==="]
+    out += [f"{k}={vals.get(k, '')}" for k in BLOG_PASSWORDS]
     return "\n".join(out) + "\n"
 
 
@@ -88,6 +102,8 @@ def main():
     adopted = []
     for stack, pairs in STACKS.items():
         old = read_kv(os.path.join(ENV_DIR, stack, ".secrets.env"))
+        if stack in LEGACY:
+            old = {**{k: x for k, x in read_kv(os.path.join(ENV_DIR, LEGACY[stack])).items() if "CHANGE_ME" not in x}, **old}
         for name, src in pairs:
             if not vals.get(src) and old.get(name):
                 vals[src] = old[name]
@@ -99,13 +115,19 @@ def main():
         print("server. New passwords would not match that database. Copy the secrets.env of the folder that made it")
         print("(or your vault copy) here. Only if that data is not needed: the Important note before guide step 7.3.")
         return 1
+    blog = os.path.isdir(os.path.join(ENV_DIR, "tbblog"))
+    if blog and not vals.get("TBBLOG_DB_PASSWORD") and os.system("docker inspect tbblog-strapi >/dev/null 2>&1") == 0:
+        print("STOP: a blog (tbblog-strapi) already runs on this server, but neither secrets.env nor tbblog/strapi.env.local")
+        print("has its database password. Put its values in secrets.env (TBBLOG_*), or copy strapi.env.local and web.env.local")
+        print("of that install into $TB/tbblog/, then run this again.")
+        return 1
     made = []
-    for k in PASSWORDS:
+    for k in PASSWORDS + (BLOG_PASSWORDS if blog else []):
         if not vals.get(k):
-            vals[k] = ",".join(rnd(32) for _ in range(4)) if k == "APP_KEYS" else rnd()
+            vals[k] = ",".join(rnd(32) for _ in range(4)) if k.endswith("APP_KEYS") else rnd()
             made.append(k)
     if adopted:
-        print(f"Taken back into secrets.env from the stacks' .secrets.env: {', '.join(sorted(set(adopted)))}")
+        print(f"Taken back into secrets.env from the stacks' .secrets.env (or a blog installed by hand): {', '.join(sorted(set(adopted)))}")
     generated = list(made)
     made += [k for k in dict.fromkeys(adopted) if k not in made]
     if made:

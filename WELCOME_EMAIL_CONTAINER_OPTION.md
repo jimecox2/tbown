@@ -8,7 +8,7 @@
 
 Hello «Name»,
 
-Thank you for choosing the Timebars container option. This email has what you need to stand up Agilebars, Timebars and Costbars in your own environments (for example DEV, STAGING, PROD and TRAINING), each on its own server.
+Thank you for choosing the Timebars container option. This email has what you need to stand up Agilebars, Timebars and Costbars, and optionally a blog, in your own environments (for example DEV, STAGING, PROD and TRAINING), each on its own server.
 
 ## 1. What you have
 
@@ -26,6 +26,7 @@ Your release: **«package release, e.g. v2.0.0»**. The image tags are in `VERSI
 2. **A dev box:** any Ubuntu machine with VS Code. Your developer configures every environment there; nothing runs on it.
 3. **A server per environment:** Ubuntu 24.04 or 26.04, 2+ cores, 4 GB RAM, 100 GB disk, patched under your policies, an admin user with `sudo` and SSH key login (guide section 2). Gather each server's IP address.
 4. **Names:** seven per environment that you choose, for example `agile.prod.com`, `pmrm.prod.com`, `ppm.prod.com`, `be2.prod.com`, `www.prod.com`, `cloud.prod.com`, `help.prod.com`. Your DNS team points them at the server. HTTPS comes from our proxy container with free Let's Encrypt certificates, or from **your own proxy**: the guide gives its routes. You can start before the IPs and DNS records exist.
+5. **The blog (optional):** the package includes a blog for your articles, built on **Strapi 5** with its own database and editor accounts. It is off unless you give it a name (`BLOG_HOST`, for example `blog.prod.com`) in an environment's section. Turn it on in any environment, now or later (guide section 17).
 
 ## 3. The installation in brief
 
@@ -55,7 +56,7 @@ By phone or another channel you choose — not by email:
 | The dev box and servers, their operating system, patching, firewall, SSH and monitoring | The application images and their updates |
 | DNS, and your own proxy if you use one | The installation package and guide |
 | Backups off the servers, and restore practice | Answers during your installation |
-| Your users, licences (orders) and content in Strapi | |
+| Your users, licences (orders) and content in Strapi, and the blog's articles and editors if you use it | |
 | Keys for optional services: Gemini (AI), SendGrid (email), Stripe (payments) | |
 
 ## 6. Good to know

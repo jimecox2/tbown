@@ -24,6 +24,7 @@ BE=$(val PUBLIC_URL "$ROOT/tbbe/.env.local")
 WWW=$(val NEXTAUTH_URL "$ROOT/tbwww/.env.local")
 CLOUD=$(val NEXTAUTH_URL "$ROOT/tbhelp/.env.local")
 HELP=$(val CLOUD_HELP_URL "$ROOT/tbhelp/.env.local")
+BLOG=$(val BLOG_URL "$ROOT/tbblog/web/.env.local")
 APPS=$(python3 -c 'import json,sys; [print(r["host"]) for r in json.load(open(sys.argv[1])).get("sites",[]) if r.get("host")]' "$ROOT/tbrun/runtime-config.json" 2>/dev/null)
 APPS="$APPS $*"
 OFFLINE=$(python3 -c 'import json,sys; [print(r["host"]) for r in json.load(open(sys.argv[1])).get("sites",[]) if r.get("offline")]' "$ROOT/tbrun/runtime-config.json" 2>/dev/null)
@@ -56,6 +57,13 @@ echo "Help library ($HELP):"
 if [ -z "$HELP" ]; then bad "CLOUD_HELP_URL not set - scripts/apply.sh --force on the dev box, copy again, ./deploy-all.sh"; else
   loc=$(curl ${CURL_OPTS:-} -s -o /dev/null -m 20 -w '%{redirect_url}' "$HELP/")
   [ "$loc" = "$CLOUD/help" ] && ok "$HELP -> $loc" || bad "$HELP -> '${loc}' (expected $CLOUD/help: the help name needs a DNS record and a proxy route to Cloud, and must share CLOUD_HOST's domain)"
+fi
+
+if [ -n "$BLOG" ]; then
+  echo "Blog ($BLOG):"
+  c=$(code "$BLOG/"); [ "$c" = 200 ] && ok "home page 200" || bad "home page $c - $(hint "$c")"
+  c=$(code "$BLOG/posts"); [ "$c" = 200 ] && ok "/posts 200" || bad "/posts $c - $(hint "$c")"
+  c=$(code -X POST "$BLOG/api/revalidate"); [ "$c" = 401 ] && ok "/api/revalidate 401 without the secret, as expected" || bad "/api/revalidate $c - $(hint "$c")"
 fi
 
 echo "Apps:"

@@ -32,6 +32,18 @@ docker exec -i tbpgdb psql -v ON_ERROR_STOP=1 -U "$as" -d postgres \
 SELECT format('ALTER ROLE %I PASSWORD %L', :'su', :'supw') WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'su') \gexec
 SELECT format('ALTER ROLE %I PASSWORD %L', :'usr', :'pw') WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'usr') \gexec
 SQL
+# The blog's role (only with a blog), from tbblog/strapi/.secrets.env
+if [ -d tbblog ]; then
+  bval() { grep -hE "^$1=" tbblog/strapi/.env.local tbblog/strapi/.secrets.env | tail -1 | cut -d= -f2-; }
+  BUSER=$(bval DATABASE_USERNAME); BPW=$(bval DATABASE_PASSWORD)
+  if [ -n "$BUSER" ] && [ -n "$BPW" ]; then
+    docker exec -i tbpgdb psql -v ON_ERROR_STOP=1 -U "$as" -d postgres -v usr="$BUSER" -v pw="$BPW" >/dev/null <<'SQL'
+SELECT format('ALTER ROLE %I PASSWORD %L', :'usr', :'pw') WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'usr') \gexec
+SQL
+    echo "The blog's role $BUSER now uses TBBLOG_DB_PASSWORD from secrets.env (if it exists; tbblog/deploy.sh makes it otherwise)."
+    docker inspect tbblog-strapi >/dev/null 2>&1 && docker restart tbblog-strapi >/dev/null && echo "Restarted tbblog-strapi."
+  fi
+fi
 missing=$(docker exec tbpgdb psql -U "$as" -d postgres -Atc "select string_agg(r, ' ') from unnest(array['$SUPER','$APPUSER']) r where r not in (select rolname from pg_roles)")
 [ -z "$missing" ] || echo "WARNING: no role $missing in this database - it was not made by this package (restore a backup, or remove the volume: guide 7.3)."
 echo "The database now uses the passwords in secrets.env (roles $SUPER, $APPUSER). Data unchanged."

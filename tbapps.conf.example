@@ -40,6 +40,16 @@ HELP_EDITORS=
 #   The six names: Agilebars, Timebars, Costbars (one app), Strapi backend, website, Timebars Cloud
 #   HELP_HOST  optional seventh name, the help library: empty = CLOUD_HOST with help for cloud (cloud.prod.com ->
 #              help.prod.com; clouds.x -> helps.x). It redirects to Cloud's /help, so it needs a DNS record too.
+#
+# The blog (optional) - tbblog: a Strapi 5 for the articles (tbblog-strapi) and the public Next.js blog (tbblog-web),
+# with its own database "tbblog" on tbpgdb and its own editor accounts (not the Timebars logins).
+#   BLOG_HOST      the blog's public name, typed in full, e.g. blog.prod.com (any domain; it needs a DNS record and
+#                  a proxy route like the other names). EMPTY = no blog in this environment: nothing of it is installed.
+#   BLOG_ADMIN_IP  where the blog's Strapi admin (port 1339, /admin) listens. It is never made public.
+#                  Empty = 127.0.0.1: only on the server; reach it from your machine with an SSH tunnel
+#                  (ssh -N -L 1339:127.0.0.1:1339 <server>, then http://localhost:1339/admin).
+#                  Or this server's LAN address (e.g. 192.168.1.9): the admin is then open to your LAN at
+#                  http://192.168.1.9:1339/admin - never forward that port on your router or firewall.
 
 [DEV]
 SERVER_IP=
@@ -51,6 +61,8 @@ APP_CB_HOST=ppm.dev.com
 BACKEND_HOST=be2.dev.com
 WEBSITE_HOST=www.dev.com
 CLOUD_HOST=cloud.dev.com
+BLOG_HOST=
+BLOG_ADMIN_IP=
 
 [STAGING]
 SERVER_IP=
@@ -62,6 +74,8 @@ APP_CB_HOST=ppm.staging.com
 BACKEND_HOST=be2.staging.com
 WEBSITE_HOST=www.staging.com
 CLOUD_HOST=cloud.staging.com
+BLOG_HOST=blog.staging.com
+BLOG_ADMIN_IP=
 
 [PROD]
 SERVER_IP=
@@ -73,6 +87,8 @@ APP_CB_HOST=ppm.prod.com
 BACKEND_HOST=be2.prod.com
 WEBSITE_HOST=www.prod.com
 CLOUD_HOST=cloud.prod.com
+BLOG_HOST=blog.prod.com
+BLOG_ADMIN_IP=
 
 [TRAINING]
 SERVER_IP=
@@ -84,3 +100,5 @@ APP_CB_HOST=ppm.training.com
 BACKEND_HOST=be2.training.com
 WEBSITE_HOST=www.training.com
 CLOUD_HOST=cloud.training.com
+BLOG_HOST=
+BLOG_ADMIN_IP=

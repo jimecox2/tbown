@@ -31,6 +31,7 @@ Contents
   - [14. Troubleshooting](#14-troubleshooting)
   - [15. New env variables added, how to deploy them to existing environments?](#15-new-env-variables-added-how-to-deploy-them-to-existing-environments)
   - [16. Change a key, for example a new Strapi admin token](#16-change-a-key-for-example-a-new-strapi-admin-token)
+  - [17. The blog (optional)](#17-the-blog-optional)
 
 ## 1. Who does what
 
@@ -60,6 +61,7 @@ Each environment runs on its own server, DEV included; environments never share 
 | **A server per environment**  | Ubuntu 24.04 or 26.04, 2+ cores, 4 GB RAM (with swap), 100 GB disk, patched under your policies; an admin user with`sudo` and SSH key login; outbound internet to Docker Hub. With our Caddy proxy, ports 80 and 443 reachable by the users. |
 | **Docker Hub access**         | a Docker Hub account with pull access granted by Timebars Ltd., and a read-only access token                                                                                                                                                 |
 | **Seven names per environment** | Agilebars, Timebars, Costbars (one app, three names), the Strapi backend, the website, Timebars Cloud and its help library, for example`agile.prod.com`, `pmrm.prod.com`, `ppm.prod.com`, `be2.prod.com`, `www.prod.com`, `cloud.prod.com`, `help.prod.com` (you type six; the help name is made from the Cloud name) |
+| **A blog name (optional)**    | only if you want the blog ([section 17](#17-the-blog-optional)), for example`blog.prod.com`, any domain |
 | **Keys (optional)**           | Google Gemini (AI), SendGrid (email), Stripe (only if you sell licences):[section 11](#11-keys-and-passwords)                                                                                                                                |
 
 The containers in every environment:
@@ -72,7 +74,8 @@ The containers in every environment:
 | `tbwwwp`    | website: sales, sign-up, profile, orders                                                                      |
 | `tbhelpapp` | Timebars Cloud (dashboards, notifications) and the AI service                                                 |
 | `tbrun`     | the Agilebars / Timebars / Costbars app (works offline after the first visit)                                 |
-| `tbproxy`   | Caddy: answers every name over HTTPS with Let's Encrypt certificates; not started when you use your own proxy |
+| `tbblog-strapi`, `tbblog-web` | optional, only with `BLOG_HOST`: the blog (Strapi 5 for the articles, and the public Next.js blog), with its own database `tbblog` on `tbpgdb` ([section 17](#17-the-blog-optional)) |
+| `tbproxy`   | Caddy: answers every name over HTTPS with Let's Encrypt certificates; you start it yourself (7.8), `deploy-all.sh` never does; not used with your own proxy |
 
 Only the proxy is reachable from the network (ports 80 and 443); the other containers listen on the server itself (`127.0.0.1`).
 
@@ -99,6 +102,8 @@ Open `tbapps.conf` in VS Code. `[ALL]` holds what every environment shares; each
 | ----------------------------------------------------------------------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `APP_AB_HOST`, `APP_TB_HOST`, `APP_CB_HOST`, `BACKEND_HOST`, `WEBSITE_HOST`, `CLOUD_HOST` | each section           | this environment's six names, typed in full, e.g.`pmrm.staging.com`. No two environments share a name. `CLOUD_HOST` should start with `cloud.` |
 | `HELP_HOST`                                                                               | each section, optional | the help library's name. Empty = `CLOUD_HOST` with `help` for `cloud` (`cloud.prod.com` -> `help.prod.com`). It redirects to Cloud's `/help` and needs a DNS record like the others |
+| `BLOG_HOST`                                                                               | each section, optional | the blog's public name, typed in full (any domain). Empty = no blog in this environment ([section 17](#17-the-blog-optional)) |
+| `BLOG_ADMIN_IP`                                                                           | each section, optional | where the blog's Strapi admin (port 1339) listens. Empty = `127.0.0.1` (reach it over an SSH tunnel); or the server's LAN address. Never public |
 | `SERVER_IP`                                                                               | each section           | the server's address, for the DNS list in`DEPLOY.md`. May stay empty until you have it.                                                               |
 | `PROXY`                                                                                   | each section           | `caddy` = our Caddy container on the server; `own` = your proxy ([section 10](#10-your-own-proxy))                                                    |
 | `TLS`                                                                                     | each section           | `letsencrypt` = public names, ports 80/443 open to the internet; `internal` = Caddy's own certificates, for names only in internal DNS or hosts files |
@@ -220,7 +225,7 @@ bash $TB/scripts/03-make-passwords.sh
 
 > **Experienced users: run Deploy All here.**
 > With 7.1 to 7.4 done, `cd $TB && ./deploy-all.sh`
-> This runs sections 7.5 to 7.9 in one go with the tags in `VERSION.md` (it repeats 7.3 and 7.4 safely). It loads the seed data only on the first deploy and is safe to run again: it keeps the passwords and the data and recreates only the containers whose image or settings changed. Then go on to [section 8](#8-check-and-finish-the-environment).
+> This runs sections 7.5 to 7.7 and 7.9 in one go with the tags in `VERSION.md` (it repeats 7.3 and 7.4 safely), and the blog when the environment has one. It never starts the proxy: run 7.8 yourself afterwards. It loads the seed data only on the first deploy and is safe to run again: it keeps the passwords and the data and recreates only the containers whose image or settings changed. Then go on to [section 8](#8-check-and-finish-the-environment).
 
 **7.5 Database and Strapi.** Each `deploy.sh` asks for the image tag; press Enter for the one in `VERSION.md`.
 
@@ -242,9 +247,10 @@ bash $TB/scripts/04-restore.sh
 cd $TB/tbwww && ./deploy.sh
 cd $TB/tbhelp && ./deploy.sh
 cd $TB/tbrun && ./deploy.sh
+cd $TB/tbblog && ./deploy.sh     # only with BLOG_HOST: makes the blog's database on tbpgdb the first time
 ```
 
-**7.8 The proxy** (`PROXY=caddy` only; with your own proxy, see [section 10](#10-your-own-proxy)). Caddy gets a certificate for every name within a minute, once the names point at this server.
+**7.8 The proxy** (`PROXY=caddy` only; with your own proxy, see [section 10](#10-your-own-proxy)). Caddy gets a certificate for every name within a minute, once the names point at this server. `deploy-all.sh` never runs this step: you start and update the proxy yourself, here.
 
 ```bash
 cd $TB/proxy && ./deploy.sh
@@ -265,7 +271,8 @@ bash $TB/scripts/06-health-check.sh
 3. **Strapi admin password.** The seed brings Timebars Ltd.'s admin accounts; set your own. List them with `docker exec tbpgdb psql -U strapi -d strapi -Atc "select email from admin_users"`, then run `docker exec -it tbbe strapi admin:reset-user-password` (it asks for the email and the new password).
 4. **Strapi API token** (the website and Cloud need it). Open `https://<backend name>/admin` → *Settings* → *API Tokens* → **Create new API token**: name `<ENV>-server`, *Unlimited*, *Full access*. Paste it into `$TB/secrets.env` as `STRAPI_ADMIN_TOKEN=`, then run `bash $TB/scripts/03-make-passwords.sh && cd $TB && ./deploy-all.sh`.
 5. **Browser check.** Open each app name (the product matches the name), sign in with a demo account, check *Show License*, publish a dataset and open it on the dashboard, and ask the help assistant a question.
-6. **Nightly backup** ([section 13](#13-backups-and-restore)).
+6. **The blog** (only with `BLOG_HOST`): the steps in [section 17](#17-the-blog-optional).
+7. **Nightly backup** ([section 13](#13-backups-and-restore)).
 
 The environment is done when all of this works. Only then start the next one.
 
@@ -294,6 +301,7 @@ Set `PROXY=own` in the environment's section before `apply`. Step 7.8 is then sk
 | backend             | `http://127.0.0.1:1337` | `http://tbbe:1337`                                 |
 | website             | `http://127.0.0.1:3001` | `http://tbwwwp:3001`                               |
 | Cloud               | `http://127.0.0.1:3010` | `http://tbhelpapp:3010`                            |
+| blog (optional)     | `http://127.0.0.1:3011` | `http://tbblog-web:3011`                           |
 
 Keep the `Host` header, send `X-Forwarded-Proto: https`, and do not cache `/index.html`, `/sw.js` or `/runtime-config.json`.
 
@@ -350,7 +358,7 @@ crontab -e                                    # then nightly, with the full path
 # 15 2 * * * /bin/bash /docker/compose/tbApps/scripts/05-backup.sh >> $HOME/backups/timebars/backup.log 2>&1
 ```
 
-Each backup (`~/backups/timebars/<date>`) holds the Strapi database, its uploads, `secrets.env` and the settings files. Copy that folder off the server with your normal backup system. To restore one:
+Each backup (`~/backups/timebars/<date>`) holds the Strapi database, its uploads, `secrets.env` and the settings files, and with a blog its database (`tbblog.dump`) and images (`tbblog-uploads.tar.gz`). Copy that folder off the server with your normal backup system. To restore one:
 
 ```bash
 bash $TB/scripts/04-restore.sh ~/backups/timebars/<date>/strapi.dump ~/backups/timebars/<date>/uploads.tar.gz
@@ -447,3 +455,17 @@ docker exec tbhelpapp sh -c 'test -n "$STRAPI_ADMIN_TOKEN" && echo set || echo e
 ```
 
 If step 2 says `401`, make the token in this environment's own Strapi (`https://<BACKEND_HOST>/admin` → Settings → API Tokens), not another environment's, with token type **Full access**. A token made before this server's `secrets.env` was made again does not work either: a new `API_TOKEN_SALT` makes old tokens invalid. If step 4 says `empty`, check `grep -c '^STRAPI_ADMIN_TOKEN=.' $TB/tbhelp/.secrets.env` (1 = the file has it).
+
+## 17. The blog (optional)
+
+The blog is two containers: `tbblog-strapi` (Strapi 5: the articles and the editors' accounts) and `tbblog-web` (the public Next.js blog). It has its own database `tbblog` on `tbpgdb`, its own passwords in `secrets.env` (`TBBLOG_*`) and its own editor logins, separate from the Timebars logins. Leave `BLOG_HOST` empty and nothing of it is installed.
+
+**Add it:** in the environment's section of `tbapps.conf` set `BLOG_HOST` (and `BLOG_ADMIN_IP` if you want the admin on your LAN), then `bash scripts/apply.sh --force <ENV>`, push, and `cd $TB && ./deploy-all.sh` on the server. Send the blog's name to your DNS team and add its route to your proxy (`http://tbblog-web:3011`).
+
+**First time, in the blog's Strapi admin** (`http://<BLOG_ADMIN_IP>:1339/admin`; with `127.0.0.1` run `ssh -N -L 1339:127.0.0.1:1339 <server>` on your machine and open `http://localhost:1339/admin`):
+
+1. Create the first admin user (Strapi asks for it on the first visit).
+2. *Settings → Users & Permissions → Roles*: a role **Content Editor**; then the editors' accounts with that role. They sign in on the blog's `/editor` page.
+3. *Settings → Webhooks* → *Create new webhook*: URL `http://tbblog-web:3011/api/revalidate`, header `Authorization` = `Bearer <TBBLOG_REVALIDATE_SECRET>` (from `$TB/secrets.env`), events *Entry*: publish, unpublish, update, delete. A published article then shows on the blog at once.
+
+**A blog installed by hand before tbown had it** (its folder is `$TB/tbblog` with `strapi.env.local`, `web.env.local` and `uploads/`): nothing to copy. The push leaves those files and the images alone, and `03-make-passwords.sh` (run by `deploy-all.sh`) takes their secrets into `secrets.env` the first time, so the database password, the logins, the API tokens and the webhook keep working. `deploy.sh` then checks that the `tbblog` role accepts that password. Once the blog runs from tbown you may delete the two old files.

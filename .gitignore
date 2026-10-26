@@ -10,3 +10,5 @@ backups/
 tbapps*.conf
 __pycache__/
 envs/
+# archived envs folders (they hold secrets.env): kept on the dev box only
+archives/
