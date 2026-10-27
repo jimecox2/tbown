@@ -3,7 +3,9 @@
 The set of image tags tested together. `scripts/apply.sh` copies this file into every environment
 package (`envs/<ENV>/VERSION.md`); on the server `deploy.sh` offers the tag listed here, `deploy-all.sh`
 uses it without asking, and `06-health-check.sh` shows any container running a different one. After
-changing a tag here, run `bash scripts/apply.sh --force <ENV>` and push the package again.
+changing a tag here, run `bash scripts/apply.sh` and push the package again. One environment can use another tag
+of an app without changing this file: `TBBLOG_TAG=` (and `TBRUN_TAG`, `TBBE_TAG`, `TBWWW_TAG`, `HELPAPP_TAG`) in
+`tbapps.conf` replaces the tag here in that environment's copy.
 
 Release: **2026.10.09**, Timebars Container Option V2 (one package per environment from `tbapps.conf`,
 see `DEPLOY_TB_SYSTEM_CONTAINER_OPTION_V2.md`). Every stack is deployed the same way (`.env.local` for
