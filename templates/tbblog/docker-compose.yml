@@ -1,12 +1,12 @@
 # The blog (optional, BLOG_HOST in tbapps.conf): Strapi 5 (tbblog-strapi) and the Next.js blog (tbblog-web).
 # Each container has its own settings and secrets: strapi/.env.local + strapi/.secrets.env, web/.env.local +
-# web/.secrets.env (chmod 600, read at run time); the image tag (one for both) in .env (deploy.sh).
+# web/.secrets.env (chmod 600, read at run time); each image's tag in .env (TBBLOG_STRAPI_TAG, TBBLOG_WEB_TAG; deploy.sh).
 # Strapi uses its own database "tbblog" on tbpgdb (deploy.sh makes it), never tbbe's "strapi".
 # tbblog-web: port 3011 on this server (LISTEN_IP); the public blog name goes through the proxy (http://tbblog-web:3011).
 # tbblog-strapi: port 1339 on BLOG_ADMIN_IP only, for the admin (/admin). Never make it public; the blog serves its images.
 services:
   tbblog-strapi:
-    image: jimecox807/tbblog-strapi:${TBBLOG_TAG:?run ./deploy.sh first, it sets TBBLOG_TAG in .env}
+    image: jimecox807/tbblog-strapi:${TBBLOG_STRAPI_TAG:?run ./deploy.sh first, it sets TBBLOG_STRAPI_TAG in .env}
     container_name: tbblog-strapi
     restart: always
     env_file: [strapi/.env.local, strapi/.secrets.env]
@@ -26,7 +26,7 @@ services:
       start_period: 90s     # Strapi takes a while to boot
 
   tbblog-web:
-    image: jimecox807/tbblog-web:${TBBLOG_TAG:?run ./deploy.sh first, it sets TBBLOG_TAG in .env}
+    image: jimecox807/tbblog-web:${TBBLOG_WEB_TAG:?run ./deploy.sh first, it sets TBBLOG_WEB_TAG in .env}
     container_name: tbblog-web
     restart: always
     env_file: [web/.env.local, web/.secrets.env]

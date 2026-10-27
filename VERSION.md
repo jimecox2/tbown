@@ -17,7 +17,7 @@ settings, the tag in `.env`, network `tbnet`).
 | Website | `jimecox807/tbwwwp` | `2026.10.09` | reads every address and key from `.env.local` at run time |
 | Timebars Cloud + AI (helpapp) | `jimecox807/tbhelpapp` | `2026.10.09` | routes `/api/ai/*` need your Gemini key; checks the Timebars Cloud login |
 | Blog Strapi 5 (optional, `BLOG_HOST`) | `jimecox807/tbblog-strapi` | `2026.10.24` | the blog's articles and editor accounts; own database `tbblog` on tbpgdb; admin on `BLOG_ADMIN_IP:1339` only |
-| Blog (optional, `BLOG_HOST`) | `jimecox807/tbblog-web` | `2026.10.24` | Next.js 14; same tag as the blog Strapi (one `TBBLOG_TAG`) |
+| Blog (optional, `BLOG_HOST`) | `jimecox807/tbblog-web` | `2026.10.24` | Next.js 14; its own tag (`TBBLOG_WEB_TAG`), asked separately from the blog Strapi's (`TBBLOG_STRAPI_TAG`) |
 | Database | `postgres` | `16` | official image; the seed (made on PostgreSQL 14) restores into it |
 | Database admin (optional) | `dpage/pgadmin4` | `latest` | profile `tools`; not started by `deploy.sh` |
 | Proxy (`PROXY=caddy`) | `caddy` | `2.11.7-alpine` | answers every name over HTTPS; started by hand (`cd $TB/proxy && ./deploy.sh`), never by `deploy-all.sh` |

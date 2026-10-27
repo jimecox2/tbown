@@ -4,6 +4,7 @@
 #   cd $TB && ./deploy-all.sh          asks for each app's tag (Enter = the one it offers: the newer of the
 #                                      running tag and VERSION.md)
 #   cd $TB && ./deploy-all.sh --yes    takes every offered tag without asking
+# The blog has two tags, asked one after the other: tbblog-strapi, then tbblog-web.
 # It runs 02-create-volumes.sh, 03-make-passwords.sh, ./deploy.sh in postgres, tbbe, then 04-restore.sh (the
 # seed data, first deploy only), ./deploy.sh in tbwww, tbhelp, tbrun and tbblog (only with a blog), and
 # 06-health-check.sh. It never starts the proxy: with PROXY=caddy run  cd $TB/proxy && ./deploy.sh  yourself. Safe to run again: it keeps the passwords and the data, and recreates only the

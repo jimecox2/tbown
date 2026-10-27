@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# deploy.sh — tbblog stack (containers tbblog-strapi and tbblog-web, one tag). Same steps as every stack:
+# deploy.sh — tbblog stack (containers tbblog-strapi and tbblog-web, each with its own tag). Same steps as every stack:
 # ../scripts/deploy-common.sh. The first time, it makes the blog's database and login role on tbpgdb.
 cd "$(dirname "$0")" || exit 1
 STACK_IMAGE=jimecox807/tbblog-strapi
-STACK_EXTRA_IMAGES=jimecox807/tbblog-web
-STACK_TAG_VAR=TBBLOG_TAG
+STACK_TAGS="TBBLOG_STRAPI_TAG=jimecox807/tbblog-strapi TBBLOG_WEB_TAG=jimecox807/tbblog-web"
+STACK_OLD_TAG_VAR=TBBLOG_TAG    # the single tag of earlier deploys: offered for both the first time
 STACK_CONTAINER=tbblog-strapi
 STACK_ENV_DIRS="strapi web"
 STACK_REQUIRED="strapi/DATABASE_PASSWORD strapi/APP_KEYS strapi/API_TOKEN_SALT strapi/ADMIN_JWT_SECRET strapi/TRANSFER_TOKEN_SALT
