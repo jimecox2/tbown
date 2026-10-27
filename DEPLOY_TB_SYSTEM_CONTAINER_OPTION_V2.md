@@ -103,7 +103,7 @@ Open `tbapps.conf` in VS Code. `[ALL]` holds what every environment shares; each
 | `APP_AB_HOST`, `APP_TB_HOST`, `APP_CB_HOST`, `BACKEND_HOST`, `WEBSITE_HOST`, `CLOUD_HOST` | each section           | this environment's six names, typed in full, e.g.`pmrm.staging.com`. No two environments share a name. `CLOUD_HOST` should start with `cloud.` |
 | `HELP_HOST`                                                                               | each section, optional | the help library's name. Empty = `CLOUD_HOST` with `help` for `cloud` (`cloud.prod.com` -> `help.prod.com`). It redirects to Cloud's `/help` and needs a DNS record like the others |
 | `BLOG_HOST`                                                                               | each section, optional | the blog's public name, typed in full (any domain). Empty = no blog in this environment ([section 17](#17-the-blog-optional)) |
-| `BLOG_ADMIN_IP`                                                                           | each section, optional | where the blog's Strapi admin (port 1339) listens. Empty = `127.0.0.1` (reach it over an SSH tunnel); or the server's LAN address. Never public |
+| `BLOG_ADMIN_HOST`                                                                         | each section, optional | the public name of the blog's Strapi admin (`https://<name>/admin`, route `http://tbblog-strapi:1339`). Empty = no name: reach it over an SSH tunnel |
 | `SERVER_IP`                                                                               | each section           | the server's address, for the DNS list in`DEPLOY.md`. May stay empty until you have it.                                                               |
 | `PROXY`                                                                                   | each section           | `caddy` = our Caddy container on the server; `own` = your proxy ([section 10](#10-your-own-proxy))                                                    |
 | `TLS`                                                                                     | each section           | `letsencrypt` = public names, ports 80/443 open to the internet; `internal` = Caddy's own certificates, for names only in internal DNS or hosts files |
@@ -461,9 +461,9 @@ If step 2 says `401`, make the token in this environment's own Strapi (`https://
 
 The blog is two containers: `tbblog-strapi` (Strapi 5: the articles and the editors' accounts) and `tbblog-web` (the public Next.js blog). It has its own database `tbblog` on `tbpgdb`, its own passwords in `secrets.env` (`TBBLOG_*`) and its own editor logins, separate from the Timebars logins. Leave `BLOG_HOST` empty and nothing of it is installed.
 
-**Add it:** in the environment's section of `tbapps.conf` set `BLOG_HOST` (and `BLOG_ADMIN_IP` if you want the admin on your LAN), then `bash scripts/apply.sh --force <ENV>`, push, and `cd $TB && ./deploy-all.sh` on the server. Send the blog's name to your DNS team and add its route to your proxy (`http://tbblog-web:3011`).
+**Add it:** in the environment's section of `tbapps.conf` set `BLOG_HOST` (and `BLOG_ADMIN_HOST` for the admin's public name), then `bash scripts/apply.sh --force <ENV>`, push, and `cd $TB && ./deploy-all.sh` on the server. Send the blog's name to your DNS team and add its route to your proxy (`http://tbblog-web:3011`), and the admin's (`http://tbblog-strapi:1339`).
 
-**First time, in the blog's Strapi admin** (`http://<BLOG_ADMIN_IP>:1339/admin`; with `127.0.0.1` run `ssh -N -L 1339:127.0.0.1:1339 <server>` on your machine and open `http://localhost:1339/admin`):
+**First time, in the blog's Strapi admin** (`https://<BLOG_ADMIN_HOST>/admin`; without one run `ssh -N -L 1339:127.0.0.1:1339 <server>` on your machine and open `http://localhost:1339/admin`):
 
 1. Create the first admin user (Strapi asks for it on the first visit).
 2. *Settings → Users & Permissions → Roles*: a role **Content Editor**; then the editors' accounts with that role. They sign in on the blog's `/editor` page.

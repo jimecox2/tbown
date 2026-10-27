@@ -20,9 +20,9 @@ In the tbown repo on lser:
 git checkout main && git pull origin main                 # after you merge PR #11
 nano tbapps.conf
 #   [STAGING] add:  BLOG_HOST=blogs.agile-pm-rm-ppm.com
-#                   BLOG_ADMIN_IP=192.168.1.9
+#                   BLOG_ADMIN_HOST=strapis.agile-pm-rm-ppm.com
 #   [PROD]    add:  BLOG_HOST=blog.agile-pm-rm-ppm.com
-#                   BLOG_ADMIN_IP=192.168.1.205
+#                   BLOG_ADMIN_HOST=strapi.agile-pm-rm-ppm.com
 mkdir -p archives && mv envs archives/envs-2026-10-26     # archives/ is git-ignored
 bash scripts/apply.sh --check                             # no FIX lines
 bash scripts/apply.sh                                     # new envs/STAGING, envs/PROD ...

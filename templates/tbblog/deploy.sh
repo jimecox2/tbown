@@ -9,7 +9,7 @@ STACK_CONTAINER=tbblog-strapi
 STACK_ENV_DIRS="strapi web"
 STACK_REQUIRED="strapi/DATABASE_PASSWORD strapi/APP_KEYS strapi/API_TOKEN_SALT strapi/ADMIN_JWT_SECRET strapi/TRANSFER_TOKEN_SALT
                 strapi/JWT_SECRET strapi/ENCRYPTION_KEY strapi/PUBLIC_URL web/STRAPI_URL web/BLOG_URL web/AUTH_SECRET web/REVALIDATE_SECRET"
-ADMIN_IP=$(grep -s '^BLOG_ADMIN_IP=' ../environment.env | cut -d= -f2-); ADMIN_IP=${ADMIN_IP:-127.0.0.1}
+ADMIN_HOST=$(grep -s '^BLOG_ADMIN_HOST=' ../environment.env | cut -d= -f2-)
 
 val() { grep -hE "^$1=" strapi/.env.local strapi/.secrets.env | tail -1 | cut -d= -f2-; }
 
@@ -58,8 +58,8 @@ stack_check() {
 }
 stack_after() {
   local code s
-  code=$(curl -s -o /dev/null -w '%{http_code}' http://$ADMIN_IP:1339/_health)
-  [ "$code" = 204 ] && echo "  Blog Strapi /_health answers 204 (admin: http://$ADMIN_IP:1339/admin)" || echo "  WARNING: blog Strapi /_health answered $code"
+  code=$(curl -s -o /dev/null -w '%{http_code}' http://$LISTEN_IP:1339/_health)
+  [ "$code" = 204 ] && echo "  Blog Strapi /_health answers 204 (admin: ${ADMIN_HOST:+https://$ADMIN_HOST/admin}${ADMIN_HOST:-ssh tunnel to 1339})" || echo "  WARNING: blog Strapi /_health answered $code"
   for _ in $(seq 1 20); do
     s=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' tbblog-web 2>/dev/null)
     case "$s" in healthy|unhealthy|exited|dead) break ;; esac

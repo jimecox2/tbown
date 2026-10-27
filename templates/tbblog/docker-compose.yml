@@ -3,7 +3,8 @@
 # web/.secrets.env (chmod 600, read at run time); each image's tag in .env (TBBLOG_STRAPI_TAG, TBBLOG_WEB_TAG; deploy.sh).
 # Strapi uses its own database "tbblog" on tbpgdb (deploy.sh makes it), never tbbe's "strapi".
 # tbblog-web: port 3011 on this server (LISTEN_IP); the public blog name goes through the proxy (http://tbblog-web:3011).
-# tbblog-strapi: port 1339 on BLOG_ADMIN_IP only, for the admin (/admin). Never make it public; the blog serves its images.
+# tbblog-strapi: port 1339 on this server (LISTEN_IP); its admin (/admin) is public only through BLOG_ADMIN_HOST
+# (route http://tbblog-strapi:1339). The blog serves the images itself.
 services:
   tbblog-strapi:
     image: jimecox807/tbblog-strapi:${TBBLOG_STRAPI_TAG:?run ./deploy.sh first, it sets TBBLOG_STRAPI_TAG in .env}
