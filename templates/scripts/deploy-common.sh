@@ -7,7 +7,8 @@
 #      scripts/03-make-passwords.sh where this runs): both exist, chmod 600, required values filled in
 #   3. creates the shared network tbnet if it is missing
 #   4. the image tag: asks (Enter = the deployed one, or the one in VERSION.md); never "latest".
-#      TB_AUTO=1 (deploy-all.sh) takes the tag in VERSION.md without asking.
+#      TB_AUTO=1 (deploy-all.sh) offers the newer of the deployed one and VERSION.md; TB_YES=1
+#      (deploy-all.sh --yes), or no terminal to ask on, takes that offer without asking.
 #   5. pulls the image, writes the tag to .env (the only line in .env), docker compose up -d
 #   6. waits for the container's health check and prints the result
 #
@@ -66,12 +67,14 @@ listed=$(awk -F'|' -v img="\`$STACK_IMAGE\`" '$3 ~ img {gsub(/[ `]/,"",$4); if (
 echo "Deployed now: ${current:-nothing}    In VERSION.md: ${listed:-not listed}"
 default=${current:-$listed}
 if [ "${TB_AUTO:-}" = 1 ]; then
-  # deploy-all.sh never goes back: the newer of the running tag and VERSION.md (release tags are dates).
-  # A rollback is done by hand: ./deploy.sh in that stack, and type the tag.
-  tag=$(printf '%s\n' "$current" "$listed" | grep -v '^$' | sort -V | tail -1)
+  # deploy-all.sh offers the newer of the running tag and VERSION.md (release tags are dates)
+  default=$(printf '%s\n' "$current" "$listed" | grep -v '^$' | sort -V | tail -1)
+fi
+if [ "${TB_YES:-}" = 1 ] || [ ! -t 0 ]; then
+  tag=$default
   echo "Tag to deploy: $tag"
 else
-  read -r -p "Tag to deploy (press Enter for '${default}'): " tag
+  read -r -p "Tag to deploy for ${PWD##*/} (press Enter for '${default}'): " tag
   tag=${tag:-$default}
 fi
 [ -n "$tag" ] || die "No tag given. The tags are in ../VERSION.md."

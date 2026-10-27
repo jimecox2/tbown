@@ -51,10 +51,6 @@ HELP_EDITORS=
 #                  (ssh -N -L 1339:127.0.0.1:1339 <server>, then http://localhost:1339/admin).
 #                  Or this server's LAN address (e.g. 192.168.1.9): the admin is then open to your LAN at
 #                  http://192.168.1.9:1339/admin - never forward that port on your router or firewall.
-#
-# Image tags (optional, in [ALL] or one environment): a tag here replaces the one in VERSION.md for that
-# environment, e.g. TBBLOG_TAG=2026.10.27 after you push a new blog image. Also TBRUN_TAG, TBBE_TAG, TBWWW_TAG,
-# HELPAPP_TAG. deploy-all.sh never goes back to an older tag than the one running.
 
 [DEV]
 SERVER_IP=

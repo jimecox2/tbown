@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# deploy-all.sh — the shortcut: every step of the guide's server part in one go, with the tags in VERSION.md.
+# deploy-all.sh — the shortcut: every step of the guide's server part in one go; it asks for each app's tag.
 # On the server, as your admin user (no sudo), after 01-install-docker.sh and docker login:
-#   cd $TB && ./deploy-all.sh
+#   cd $TB && ./deploy-all.sh          asks for each app's tag (Enter = the one it offers: the newer of the
+#                                      running tag and VERSION.md)
+#   cd $TB && ./deploy-all.sh --yes    takes every offered tag without asking
 # It runs 02-create-volumes.sh, 03-make-passwords.sh, ./deploy.sh in postgres, tbbe, then 04-restore.sh (the
 # seed data, first deploy only), ./deploy.sh in tbwww, tbhelp, tbrun and tbblog (only with a blog), and
 # 06-health-check.sh. It never starts the proxy: with PROXY=caddy run  cd $TB/proxy && ./deploy.sh  yourself. Safe to run again: it keeps the passwords and the data, and recreates only the
@@ -27,6 +29,7 @@ step "Passwords (03-make-passwords.sh)"
 bash scripts/03-make-passwords.sh || exit 1
 
 export TB_AUTO=1
+[ "${1:-}" = --yes ] && export TB_YES=1
 stacks="postgres tbbe tbwww tbhelp tbrun"
 [ -d tbblog ] && stacks="$stacks tbblog"     # the blog: only in environments with BLOG_HOST
 for s in $stacks; do

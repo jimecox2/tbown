@@ -7,8 +7,6 @@ Run it through scripts/apply.sh, on the dev box, in your clone of tbown:
   bash scripts/apply.sh --check         check tbapps.conf and show what would be made; writes nothing
 Making a folder again keeps what belongs to the running environment: secrets.env, each stack's .secrets.env
 and .env, uploaded files. Your hand edits in the generated files are replaced. (--force is still accepted.)
-Image tags: VERSION.md, unless tbapps.conf sets TBRUN_TAG, TBBE_TAG, TBWWW_TAG, HELPAPP_TAG or TBBLOG_TAG
-(in [ALL] or one environment): that environment's VERSION.md then lists that tag.
 
 Each envs/<ENV> folder is the package for that environment's server: the stack folders with their settings
 (.env.local, runtime-config.json, Caddyfile), secrets.env (keys; passwords are made on the server), the
@@ -40,12 +38,8 @@ NAMES = [("APP_AB_HOST", "agile", "Agilebars"), ("APP_TB_HOST", "pmrm", "Timebar
 HOSTS = [k for k, _, _ in NAMES]
 # The blog (tbblog: Strapi 5 + Next.js) is optional: an environment without BLOG_HOST has no tbblog folder
 BLOG_SETTINGS = ["BLOG_HOST", "BLOG_ADMIN_IP"]
-# Optional image tags in tbapps.conf: each replaces VERSION.md's tag for its images in that environment's package
-TAG_IMAGES = {"TBRUN_TAG": ["jimecox807/tbrun"], "TBBE_TAG": ["jimecox807/tbbe"], "TBWWW_TAG": ["jimecox807/tbwwwp"],
-              "HELPAPP_TAG": ["jimecox807/tbhelpapp"], "TBBLOG_TAG": ["jimecox807/tbblog-strapi", "jimecox807/tbblog-web"]}
-TAG_RE = re.compile(r"^[0-9A-Za-z][0-9A-Za-z._-]*$")
 SETTINGS = ["ACME_EMAIL", "EMAIL_FROM", "EMAIL_REPLY_TO", "APP_OFFLINE", "EXTRA_CORS_ORIGINS", "OP_URL", "HELP_EDITORS",
-            "SERVER_IP", "PROXY", "TLS", "LISTEN_IP"] + HOSTS + BLOG_SETTINGS + list(TAG_IMAGES)
+            "SERVER_IP", "PROXY", "TLS", "LISTEN_IP"] + HOSTS + BLOG_SETTINGS
 KEYS = [k for k, _ in tbsecrets.KEYS]
 FIXED = {"POSTGRES_USER": "pgsuper", "STRAPI_DB_NAME": "strapi", "STRAPI_DB_USER": "strapi",
          "PGADMIN_DEFAULT_EMAIL": "admin@example.com"}
@@ -112,9 +106,6 @@ def resolve(env, sections):
     v["PROXY"] = (v["PROXY"] or "caddy").lower()
     v["TLS"] = (v["TLS"] or "letsencrypt").lower()
     v["APP_OFFLINE"] = (v["APP_OFFLINE"] or "yes").lower()
-    for k in TAG_IMAGES:
-        if v[k] and (not TAG_RE.match(v[k]) or v[k] == "latest"):
-            errs.append(f"{k}={v[k]} is not a release tag (e.g. 2026.10.27; never latest)")
     if v["PROXY"] not in ("caddy", "own"):
         errs.append("PROXY must be caddy or own")
     if v["TLS"] not in ("letsencrypt", "internal"):
@@ -370,19 +361,6 @@ def copy_tree(src, dst):
             shutil.copy2(os.path.join(root, f), os.path.join(dst, rel, f))
 
 
-def version_text(v):
-    """VERSION.md with the tags set in tbapps.conf (TBBLOG_TAG ...) in place of the listed ones."""
-    lines = []
-    for line in open(os.path.join(REPO, "VERSION.md")):
-        for k, images in TAG_IMAGES.items():
-            cols = line.split("|")
-            if v[k] and len(cols) > 4 and cols[2].strip() in [f"`{i}`" for i in images]:
-                cols[3] = f" `{v[k]}` "
-                line = "|".join(cols)
-        lines.append(line)
-    return "".join(lines)
-
-
 def make(v, force):
     env = v["ENVIRONMENT"]
     d = os.path.join(ENVS, env)
@@ -390,7 +368,7 @@ def make(v, force):
     if not v["BLOG_HOST"]:  # no blog in this environment: no tbblog folder (deploy-all.sh and the checks skip it)
         shutil.rmtree(os.path.join(d, "tbblog"), ignore_errors=True)
     copy_tree(os.path.join(REPO, "seed"), os.path.join(d, "seed"))
-    write(os.path.join(d, "VERSION.md"), version_text(v))
+    shutil.copy2(os.path.join(REPO, "VERSION.md"), os.path.join(d, "VERSION.md"))
     stacks, rt = render(v)
     for stack, pairs in stacks.items():
         write(os.path.join(d, stack, ".env.local"), env_text(stack, pairs), 0o600)
@@ -444,9 +422,6 @@ def main(argv):
     for env in order:
         errs, warns, v = resolve(env, sections)
         say(f"[{env}]  {v['APP_TB_HOST'] or '?'} ...  proxy {v['PROXY']}, TLS {v['TLS']}, server {v['SERVER_IP'] or '?'}, blog {v['BLOG_HOST'] or 'none'}")
-        tags = ", ".join(f"{k}={v[k]}" for k in TAG_IMAGES if v[k])
-        if tags:
-            say(f"    tags from tbapps.conf (instead of VERSION.md): {tags}")
         for w in warns:
             say(f"    note: {w}")
         for e in errs:
