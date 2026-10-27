@@ -1,4 +1,78 @@
 
+##### Next time you deploy a new blog tag:
+
+On lser: bash scripts/apply.sh, then bash envs/PROD/00-push-to-server.sh gmk1 ~/docker. You only need these if you changed tbapps.conf or pulled tbown.
+On gmk1: cd ~/docker/tbApps && ./deploy-all.sh, then type the new tag at tbblog and press Enter for the others. Or just cd ~/docker/tbApps/tbblog && ./deploy.sh.
+
+
+# NEW Redeploy STAGING and PROD with the blog (deploy-all shortcut)
+
+You're deploying over existing installs, and the blog already runs by hand on both servers. Nothing gets lost:
+the push never overwrites the server's `secrets.env`, `.env` tags or `tbblog/uploads`, and the first
+`deploy-all.sh` copies the blog's secrets from `tbblog/strapi.env.local` and `web.env.local` into `secrets.env`.
+The proxy and cloudflared are not touched; `deploy-all.sh` no longer starts the proxy.
+
+## 1. STAGING on lser (tbown repo and package on the same box, no ssh)
+
+In the tbown repo on lser:
+
+```bash
+git checkout main && git pull origin main                 # after you merge PR #11
+nano tbapps.conf
+#   [STAGING] add:  BLOG_HOST=blogs.agile-pm-rm-ppm.com
+#                   BLOG_ADMIN_IP=192.168.1.9
+#   [PROD]    add:  BLOG_HOST=blog.agile-pm-rm-ppm.com
+#                   BLOG_ADMIN_IP=192.168.1.205
+mkdir -p archives && mv envs archives/envs-2026-10-26     # archives/ is git-ignored
+bash scripts/apply.sh --check                             # no FIX lines
+bash scripts/apply.sh                                     # new envs/STAGING, envs/PROD ...
+```
+
+Safety copy of the blog first (the old backup script doesn't include it):
+
+```bash
+bash $TB/scripts/05-backup.sh
+docker exec tbpgdb pg_dump -U tbblog -d tbblog -Fc > ~/tbblog-before.dump
+cp $TB/tbblog/strapi.env.local $TB/tbblog/web.env.local ~/ && chmod 600 ~/*.env.local
+```
+
+Push and deploy:
+
+```bash
+bash envs/STAGING/00-push-to-server.sh local /docker/compose
+source ~/.bashrc
+cd $TB && ./deploy-all.sh
+```
+
+In the output, check for the line *"Taken back into secrets.env ... (or a blog installed by hand): TBBLOG_..."*
+and *"Database tbblog on tbpgdb accepts tbblog."* Then run `bash $TB/scripts/07-check-urls.sh`.
+
+## 2. PROD on gmk1, over ssh
+
+First, on gmk1, check that `echo $TB` prints the folder that holds the blog (`~/docker/tbApps`, so the blog is `$TB/tbblog`).
+If the blog is somewhere else, tell me before you push.
+
+In the tbown repo on lser:
+
+```bash
+bash envs/PROD/00-push-to-server.sh gmk1 ~/docker
+```
+
+In a gmk1 terminal (`ssh gmk1`):
+
+```bash
+bash $TB/scripts/05-backup.sh
+docker exec tbpgdb pg_dump -U tbblog -d tbblog -Fc > ~/tbblog-before.dump
+cd $TB && ./deploy-all.sh
+bash $TB/scripts/07-check-urls.sh
+```
+
+Note: the blog's "Visit Timebars Ltd." link now goes to that environment's website (staging: wwws.timebars.com).
+
+
+
+// end 
+
 # git add commit push
 acp "miscl"
 
