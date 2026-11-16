@@ -1,8 +1,20 @@
 
-##### Next time you deploy a new blog tag:
+##### Next time you deploy new vars etc
 
-On lser: bash scripts/apply.sh, then bash envs/PROD/00-push-to-server.sh gmk1 ~/docker. You only need these if you changed tbapps.conf or pulled tbown.
-On gmk1: cd ~/docker/tbApps && ./deploy-all.sh, then type the new tag at tbblog and press Enter for the others. Or just cd ~/docker/tbApps/tbblog && ./deploy.sh.
+You only need these if you changed tbapps.conf.
+On lser: bash scripts/apply.sh, then 
+bash envs/STAGING/00-push-to-server.sh local /docker/compose
+bash envs/PROD/00-push-to-server.sh gmk1 ~/docker
+
+To check that the settings landed:
+docker exec tbhelpapp printenv LICENSING_MODE
+
+
+# other options
+on lser: cd /docker/compose/tbApps && ./deploy-all.sh
+On gmk1: cd ~/docker/tbApps && ./deploy-all.sh
+
+ Or just cd ~/docker/tbApps/tbblog && ./deploy.sh, deploy all is better
 
 
 # NEW Redeploy STAGING and PROD with the blog (deploy-all shortcut)
