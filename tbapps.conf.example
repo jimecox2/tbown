@@ -31,6 +31,12 @@ SENDGRID_API_KEY=
 # Who may push content into Strapi: Cloud's /update-help (help articles) and the website's /update-articles
 # (marketing). Comma-separated emails, no spaces; each must ALSO be an Administrator in Strapi. Empty = nobody.
 HELP_EDITORS=
+# Licences (Timebars Cloud, Licences & Accounts): sales = Enterprise contracts are bought on the website (Stripe);
+# self-managed = no website sales: licence managers set up companies and contracts in Cloud, with no payment.
+# A company's Administrator makes accounts and hands out seats in both modes. Empty = sales.
+LICENSING_MODE=sales
+# Licence managers (self-managed only): comma-separated emails, no spaces; each must ALSO be an Administrator in Strapi.
+LICENCE_MANAGERS=
 
 # Each environment:
 #   SERVER_IP  its server's address, for the DNS list in DEPLOY.md - may stay empty until you have it

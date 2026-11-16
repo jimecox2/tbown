@@ -39,6 +39,7 @@ HOSTS = [k for k, _, _ in NAMES]
 # The blog (tbblog: Strapi 5 + Next.js) is optional: an environment without BLOG_HOST has no tbblog folder
 BLOG_SETTINGS = ["BLOG_HOST", "BLOG_ADMIN_HOST"]
 SETTINGS = ["ACME_EMAIL", "EMAIL_FROM", "EMAIL_REPLY_TO", "APP_OFFLINE", "EXTRA_CORS_ORIGINS", "OP_URL", "HELP_EDITORS",
+            "LICENSING_MODE", "LICENCE_MANAGERS",
             "SERVER_IP", "PROXY", "TLS", "LISTEN_IP"] + HOSTS + BLOG_SETTINGS
 KEYS = [k for k, _ in tbsecrets.KEYS]
 FIXED = {"POSTGRES_USER": "pgsuper", "STRAPI_DB_NAME": "strapi", "STRAPI_DB_USER": "strapi",
@@ -115,6 +116,13 @@ def resolve(env, sections):
         errs.append("TLS must be letsencrypt or internal")
     if v["APP_OFFLINE"] not in ("yes", "no"):
         errs.append("APP_OFFLINE must be yes or no")
+    v["LICENSING_MODE"] = (v["LICENSING_MODE"] or "sales").lower()
+    if v["LICENSING_MODE"] not in ("sales", "self-managed"):
+        errs.append("LICENSING_MODE must be sales or self-managed")
+    if v["LICENCE_MANAGERS"] and v["LICENSING_MODE"] != "self-managed":
+        warns.append("LICENCE_MANAGERS is only used with LICENSING_MODE=self-managed - ignored")
+    if v["LICENSING_MODE"] == "self-managed" and not v["LICENCE_MANAGERS"]:
+        warns.append("LICENSING_MODE=self-managed but LICENCE_MANAGERS is empty: nobody can set up companies and contracts")
     # HELP_HOST may stay empty: it is CLOUD_HOST with "help" for "cloud" (staging "helps" for "clouds"). Timebars
     # Cloud sends help.<domain> to cloud.<domain>/help, so the two must share everything after the first label.
     cloud = clean_host(v["CLOUD_HOST"])
@@ -167,9 +175,10 @@ def resolve(env, sections):
     for k in ("EMAIL_FROM", "EMAIL_REPLY_TO", "ACME_EMAIL"):
         if v[k] and not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", v[k]):
             errs.append(f"{k}: '{v[k]}' is not an email address")
-    for e in [e for e in v["HELP_EDITORS"].split(",") if e]:
-        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", e):
-            errs.append(f"HELP_EDITORS: '{e}' is not an email address (comma separated, no spaces)")
+    for k in ("HELP_EDITORS", "LICENCE_MANAGERS"):
+        for e in [e for e in v[k].split(",") if e]:
+            if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", e):
+                errs.append(f"{k}: '{e}' is not an email address (comma separated, no spaces)")
     if v["PROXY"] == "caddy" and v["TLS"] == "letsencrypt" and not v["ACME_EMAIL"]:
         errs.append("ACME_EMAIL is needed for Let's Encrypt (PROXY=caddy, TLS=letsencrypt)")
     if v["OP_URL"] and not v["OP_URL"].startswith("http"):
@@ -203,7 +212,9 @@ def render(v):
                   ("HELP_EDITORS", v["HELP_EDITORS"]), ("TB_ENVIRONMENT", v["ENVIRONMENT"])],
         "tbhelp": [("STRAPI_URL", "http://tbbe:1337/api"), ("NEXTAUTH_URL", cloud), ("CLOUD_API_URL", f"{be}/api"),
                    ("CLOUD_WWW_URL", www), ("CLOUD_HELP_URL", help_), ("RUN_URL_AB", run["AB"]), ("RUN_URL_TB", run["TB"]),
-                   ("RUN_URL_CB", run["CB"]), ("HELP_EDITORS", v["HELP_EDITORS"]), ("TB_ENVIRONMENT", v["ENVIRONMENT"])],
+                   ("RUN_URL_CB", run["CB"]), ("HELP_EDITORS", v["HELP_EDITORS"]), ("TB_ENVIRONMENT", v["ENVIRONMENT"]),
+                   ("LICENSING_MODE", v["LICENSING_MODE"]),
+                   ("LICENCE_MANAGERS", v["LICENCE_MANAGERS"] if v["LICENSING_MODE"] == "self-managed" else "")],
     }
     if v["BLOG_HOST"]:
         blog = https(v["BLOG_HOST"])
