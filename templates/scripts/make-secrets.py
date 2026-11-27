@@ -21,7 +21,8 @@ SECRETS = os.path.join(ENV_DIR, "secrets.env")
 
 KEYS = [  # pasted by you; empty = that feature is off
     ("GEMINI_API_KEY", "Google Gemini key, starts with AIza - Ask AI, AI Create, help assistant"),
-    ("SENDGRID_API_KEY", "SendGrid key, starts with SG. - registration and password emails"),
+    ("SMTP_USER", "Brevo SMTP login (SMTP & API -> SMTP), e.g. xxxx@smtp-brevo.com - registration and password emails"),
+    ("SMTP_PASS", "Brevo SMTP key (not an API key), with the one above"),
     ("STRAPI_ADMIN_TOKEN", "Strapi API token, Full access - made AFTER Strapi is up (guide: Strapi API token)"),
     ("STRIPE_SECRET_KEY", "only if you sell licences: sk_test_... (not PROD) or sk_live_... (PROD)"),
     ("STRIPE_PUBLISHABLE_KEY", "with the one above: pk_test_... or pk_live_..."),
@@ -38,7 +39,7 @@ STACKS = {
                  ("PGADMIN_DEFAULT_PASSWORD", "PGADMIN_DEFAULT_PASSWORD")],
     "tbbe": [("DATABASE_PASSWORD", "STRAPI_DB_PASSWORD"), ("APP_KEYS", "APP_KEYS"), ("API_TOKEN_SALT", "API_TOKEN_SALT"),
              ("ADMIN_JWT_SECRET", "ADMIN_JWT_SECRET"), ("TRANSFER_TOKEN_SALT", "TRANSFER_TOKEN_SALT"),
-             ("JWT_SECRET", "JWT_SECRET"), ("SENDGRID_API_KEY", "SENDGRID_API_KEY")],
+             ("JWT_SECRET", "JWT_SECRET"), ("SMTP_USER", "SMTP_USER"), ("SMTP_PASS", "SMTP_PASS")],
     "tbwww": [("NEXTAUTH_SECRET", "WWW_NEXTAUTH_SECRET"), ("STRAPI_ADMIN_TOKEN", "STRAPI_ADMIN_TOKEN"),
               ("STRIPE_SECRET_KEY", "STRIPE_SECRET_KEY"), ("STRIPE_PUBLISHABLE_KEY", "STRIPE_PUBLISHABLE_KEY")],
     "tbhelp": [("GEMINI_API_KEY", "GEMINI_API_KEY"), ("NEXTAUTH_SECRET", "CLOUD_NEXTAUTH_SECRET"),

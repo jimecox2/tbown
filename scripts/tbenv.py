@@ -331,7 +331,7 @@ def deploy_md(v):
             "sudo bash $TB/scripts/01-install-docker.sh   # once per server, then log out and in",
             "docker login -u <Docker Hub user>            # once per server, read-only token",
             "bash $TB/scripts/02-create-volumes.sh        # network tbnet, database volumes",
-            "nano $TB/secrets.env                         # paste the keys: Gemini, SendGrid, Stripe",
+            "nano $TB/secrets.env                         # paste the keys: Gemini, Brevo SMTP, Stripe",
             "bash $TB/scripts/03-make-passwords.sh        # makes the passwords here, on the server",
             "cd $TB/postgres && ./deploy.sh               # Enter = the tag in VERSION.md",
             "cd $TB/tbbe && ./deploy.sh",

@@ -14,7 +14,7 @@
 [ALL]
 # Let's Encrypt sends certificate notices here (only with PROXY=caddy and TLS=letsencrypt)
 ACME_EMAIL=it@example.com
-# Sender of registration and password emails - a sender verified in SendGrid
+# Sender of registration and password emails - a sender or domain verified in Brevo
 EMAIL_FROM=noreply@example.com
 # Replies go here (empty = EMAIL_FROM)
 EMAIL_REPLY_TO=
@@ -27,7 +27,9 @@ OP_URL=
 # Keys: recommended is to leave them empty and paste them into secrets.env on each server (guide: keys
 # and passwords). Set here, they are copied into every environment's package.
 GEMINI_API_KEY=
-SENDGRID_API_KEY=
+# Brevo SMTP (registration and password emails): SMTP login and SMTP key
+SMTP_USER=
+SMTP_PASS=
 # Who may push content into Strapi: Cloud's /update-help (help articles) and the website's /update-articles
 # (marketing). Comma-separated emails, no spaces; each must ALSO be an Administrator in Strapi. Empty = nobody.
 HELP_EDITORS=

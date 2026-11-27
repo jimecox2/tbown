@@ -62,7 +62,7 @@ Each environment runs on its own server, DEV included; environments never share 
 | **Docker Hub access**         | a Docker Hub account with pull access granted by Timebars Ltd., and a read-only access token                                                                                                                                                 |
 | **Seven names per environment** | Agilebars, Timebars, Costbars (one app, three names), the Strapi backend, the website, Timebars Cloud and its help library, for example`agile.prod.com`, `pmrm.prod.com`, `ppm.prod.com`, `be2.prod.com`, `www.prod.com`, `cloud.prod.com`, `help.prod.com` (you type six; the help name is made from the Cloud name) |
 | **A blog name (optional)**    | only if you want the blog ([section 17](#17-the-blog-optional)), for example`blog.prod.com`, any domain |
-| **Keys (optional)**           | Google Gemini (AI), SendGrid (email), Stripe (only if you sell licences):[section 11](#11-keys-and-passwords)                                                                                                                                |
+| **Keys (optional)**           | Google Gemini (AI), Brevo SMTP (email), Stripe (only if you sell licences):[section 11](#11-keys-and-passwords)                                                                                                                                |
 
 The containers in every environment:
 
@@ -109,11 +109,11 @@ Open `tbapps.conf` in VS Code. `[ALL]` holds what every environment shares; each
 | `TLS`                                                                                     | each section           | `letsencrypt` = public names, ports 80/443 open to the internet; `internal` = Caddy's own certificates, for names only in internal DNS or hosts files |
 | `LISTEN_IP`                                                                               | each section, optional | only with`PROXY=own` and your proxy on another machine: the server address it reaches                                                                 |
 | `ACME_EMAIL`                                                                              | `[ALL]`                | Let's Encrypt sends certificate notices here                                                                                                          |
-| `EMAIL_FROM`, `EMAIL_REPLY_TO`                                                            | `[ALL]`                | sender of registration and password emails (verified in SendGrid)                                                                                     |
+| `EMAIL_FROM`, `EMAIL_REPLY_TO`                                                            | `[ALL]`                | sender of registration and password emails (verified in Brevo)                                                                                     |
 | `APP_OFFLINE`, `EXTRA_CORS_ORIGINS`, `OP_URL`                                             | `[ALL]`                | offline mode (yes), other allowed browser origins, your OpenProject address                                                                           |
 | `HELP_EDITORS`                                                                            | `[ALL]`                | emails (comma separated, no spaces) who may push content into Strapi: Cloud `/update-help`, website `/update-articles`. Each must also be an Administrator in Strapi. Empty = nobody |
 | `LICENSING_MODE`, `LICENCE_MANAGERS` | `[ALL]` or each section | Timebars Cloud Licences & Accounts: `sales` (default) = Enterprise contracts are bought on the website; `self-managed` = no website sales, the licence managers (emails, comma separated, no spaces; each also an Administrator in Strapi) set up companies and contracts in Cloud with no payment |
-| `GEMINI_API_KEY`, `SENDGRID_API_KEY`                                                      | `[ALL]`, optional      | recommended: leave empty and paste them on each server ([section 11](#11-keys-and-passwords))                                                         |
+| `GEMINI_API_KEY`, `SMTP_USER`, `SMTP_PASS`                                                      | `[ALL]`, optional      | recommended: leave empty and paste them on each server ([section 11](#11-keys-and-passwords))                                                         |
 
 Only the section named `PROD` is open to search engines; every other environment sends `noindex`. `apply` also writes the section name as `TB_ENVIRONMENT` into the Cloud and website `.env.local`: every environment except `PROD` shows a dark red nav bar there with its name (`STAGING`, `DEV`, `TRAINING`).
 
@@ -216,7 +216,7 @@ In the password prompt, enter the docker PAT, it may look like this: dckr_pat_xx
 bash $TB/scripts/02-create-volumes.sh
 ```
 
-**7.4 Keys and passwords.** Paste this environment's keys (Gemini, SendGrid, Stripe) into `secrets.env` and leave the passwords empty. Then make the passwords: they are made here, on this server, and never leave it.
+**7.4 Keys and passwords.** Paste this environment's keys (Gemini, Brevo SMTP, Stripe) into `secrets.env` and leave the passwords empty. Then make the passwords: they are made here, on this server, and never leave it.
 
 ```bash
 nano $TB/secrets.env
@@ -314,7 +314,7 @@ Keep the `Host` header, send `X-Forwarded-Proto: https`, and do not cache `/inde
 | What                                             | Made by                                               | Lives in                                                                                                      |
 | ------------------------------------------------ | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | Addresses, names, routes                         | `apply` on the dev box                                | each stack's`.env.local`, `tbrun/runtime-config.json`, `proxy/Caddyfile`: no secrets, safe to read and review |
-| Keys: Gemini, SendGrid, Stripe, Strapi API token | pasted by whoever deploys                             | `$TB/secrets.env` on the server                                                                               |
+| Keys: Gemini, Brevo SMTP, Stripe, Strapi API token | pasted by whoever deploys                             | `$TB/secrets.env` on the server                                                                               |
 | Database passwords and sign-in secrets           | `03-make-passwords.sh`, on the server, the first time | `$TB/secrets.env` on the server                                                                               |
 
 **What we recommend:** leave the keys out of `tbapps.conf`. The package then holds no secret at all: the passwords are made on the server and never leave it, and the keys are pasted there. Never put a key or password in git or in an email. Keep a copy of each server's `secrets.env` in your password vault.
@@ -325,7 +325,7 @@ Where to get the keys:
 | Key                                           | Where                                                                                                                                                                                                   |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GEMINI_API_KEY`                              | [aistudio.google.com](https://aistudio.google.com) → *Get API key*. Restrict it to the *Generative Language API*; add billing and a budget alert if you expect more than the free tier. Empty = AI off |
-| `SENDGRID_API_KEY`                            | [SendGrid](https://www.twilio.com/en-us/sendgrid) → verify your `EMAIL_FROM` sender → *API Keys* → *Restricted Access* with *Mail Send* (starts with `SG.`). Empty = no email                        |
+| `SMTP_USER`, `SMTP_PASS`                      | [Brevo](https://www.brevo.com) → verify your `EMAIL_FROM` sender or domain (add its SPF and DKIM records) → *SMTP & API* → *SMTP*: the login (`xxxx@smtp-brevo.com`) and a new SMTP key. Server `smtp-relay.brevo.com:587`. Empty = no email |
 | `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` | [dashboard.stripe.com](https://dashboard.stripe.com) → *Developers* → *API keys* (sandbox for everything but PROD). Empty = no checkout                                                               |
 | `STRAPI_ADMIN_TOKEN`                          | made after the first deploy ([section 8](#8-check-and-finish-the-environment))                                                                                                                          |
 
@@ -426,7 +426,7 @@ Repeat for the next environment. Work through staging first, then production.
 
 ## 16. Change a key, for example a new Strapi admin token
 
-You only change one file: the `STRAPI_ADMIN_TOKEN=` line in `$TB/secrets.env`. Do this on the server (the same steps for any other key in `secrets.env`: Gemini, SendGrid, Stripe):
+You only change one file: the `STRAPI_ADMIN_TOKEN=` line in `$TB/secrets.env`. Do this on the server (the same steps for any other key in `secrets.env`: Gemini, Brevo SMTP, Stripe):
 
 **1. Put the token in:**
 

@@ -57,7 +57,7 @@ By phone or another channel you choose — not by email:
 | DNS, and your own proxy if you use one | The installation package and guide |
 | Backups off the servers, and restore practice | Answers during your installation |
 | Your users, licences (orders) and content in Strapi, and the blog's articles and editors if you use it | |
-| Keys for optional services: Gemini (AI), SendGrid (email), Stripe (payments) | |
+| Keys for optional services: Gemini (AI), Brevo SMTP (email), Stripe (payments) | |
 
 ## 6. Good to know
 
